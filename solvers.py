@@ -160,7 +160,7 @@ class IterativeDIISSolver(IterativeSolver):
 
             where elements of the matrix B, B_ij, is
 
-            B_ij = < dmu^(i) | dmu^(i) >,
+            B_ij = < dmu^(i) | dmu^(j) >,
 
             where
 
