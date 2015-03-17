@@ -255,8 +255,8 @@ class Potential(object):
             from intersect import intersect
             nmax = max(len(sc), len(oc))
             F,n = intersect(nmax, sc, oc)
-            satoms = F[:n,0]
-            oatoms = F[:n,1]
+            satoms = list(F[:n,0])
+            oatoms = list(F[:n,1])
         except:
 
             eps = 1.0e-2
@@ -306,6 +306,11 @@ class Potential(object):
                         oatoms.append(jc)
                         break
 
+        # make inverted satoms list
+        smotas = numpy.zeros(max(satoms)+1, dtype=int) -1
+        for i, value in enumerate(satoms):
+            smotas[value] = i
+
         # transfer stuff
         p = Potential()
         c = []
@@ -320,7 +325,7 @@ class Potential(object):
             pol.append( self.polarizabilities[ic] )
 
             ex_unfixed = self.exclusion_list[ic]
-            ex_fixed = self.fix_exclusion_list( ex_unfixed, satoms )
+            ex_fixed = self.fix_exclusion_list( ex_unfixed, satoms, smotas )
             e[i] = numpy.array(ex_fixed[:])
 
         for key in self.multipoles:
@@ -336,18 +341,17 @@ class Potential(object):
 
         return p
 
-    def fix_exclusion_list( self, exlist, ids ):
+    def fix_exclusion_list( self, exlist, ids, sdi ):
         new_list = [-1 for i in exlist]
         offset = 0
         for i, value in enumerate(exlist):
             if value == -1:
                 break
-            try:
-                new_list[i+offset] = ids.index( value )
-            except ValueError:
-                # offset index to correct the list for values that are not part of the system
+            if sdi[value] == -1:
                 offset -= 1
-                #print("index {} was not found in atom list.".format(value))
+                continue
+
+            new_list[i+offset] = sdi[value]
         return new_list
 
 class TransitionPotential(Potential):
