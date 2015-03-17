@@ -16,7 +16,7 @@ class Potential(object):
         pass
 
     @classmethod
-    def fromFile(cls, filename):
+    def from_file(cls, filename):
         """ Creates a potential from a file
             Arguments:
             filename -- the filename to instantiate the potential from
@@ -238,8 +238,173 @@ class Potential(object):
             pol2.append(isopol)
         self.polarizabilities = pol2[:]
 
+    def __and__(self, other):
+        """ Intersection can be computed for two potentials
+            by finding appropriate overlapping atoms
+        """
+
+        satoms = []
+        oatoms = []
+
+        slen = self.nsites
+        olen = other.nsites
+        sc = numpy.array( self.coordinates )
+        oc = numpy.array( other.coordinates )
+
+        try:
+            from intersect import intersect
+            nmax = max(len(sc), len(oc))
+            F,n = intersect(nmax, sc, oc)
+            satoms = F[:n,0]
+            oatoms = F[:n,1]
+        except:
+
+            eps = 1.0e-2
+            eps2 = eps*eps
+
+            # first pass is linear in time by comparing atoms directly as we loop over them
+            # to avoid expensive pairwise calculations. now the lists might not be equal
+            # in length so take the shorter one
+            nsites = slen
+            if slen > olen:
+                nsites = olen
+
+            for ic in range(nsites):
+                dr = sc[ic] - oc[ic]
+                R2 = dr.dot(dr)
+                if R2 < eps2:
+                    satoms.append(ic)
+                    oatoms.append(ic)
+
+            # single atoms could have been removed, so let's just try again with a spray of offsets
+            for ic in range(nsites):
+                if ic in satoms:
+                    continue
+
+                for offset in [-4, -3, -2, -1, 1, 2, 3, 4]:
+                    dr = sc[ic] - oc[ic+offset]
+                    R2 = dr.dot(dr)
+                    if R2 < eps2:
+                        satoms.append(ic)
+                        oatoms.append(ic+offset)
+                        break
+
+            # next loop is pairwise, looking for all the other ones. do not attempt to use any
+            # atoms already in the {s,o}atoms lists.
+            for ic in range(nsites):
+                if ic in satoms:
+                    continue
+
+                for jc in range(nsites):
+                    if jc in oatoms:
+                        continue
+
+                    dr = sc[ic] - oc[jc]
+                    R2 = dr.dot(dr)
+                    if R2 < eps2:
+                        satoms.append(ic)
+                        oatoms.append(jc)
+                        break
+
+        # transfer stuff
+        p = Potential()
+        c = []
+        l = []
+        pol = []
+        m = dict()
+        e = dict()
+
+        for i, ic in enumerate(satoms):
+            c.append( self.coordinates[ic] )
+            l.append( self.labels[ic] )
+            pol.append( self.polarizabilities[ic] )
+
+            ex_unfixed = self.exclusion_list[ic]
+            ex_fixed = self.fix_exclusion_list( ex_unfixed, satoms )
+            e[i] = numpy.array(ex_fixed[:])
+
+        for key in self.multipoles:
+            m[key] = []
+            for ic in satoms:
+                m[key].append(self.multipoles[key][ic])
+
+        p.coordinates = numpy.array(c)
+        p.labels = numpy.array(l)
+        p.multipoles = m
+        p.polarizabilities = pol[:]
+        p.exclusion_list = e
+
+        return p
+
+    def fix_exclusion_list( self, exlist, ids ):
+        new_list = [-1 for i in exlist]
+        offset = 0
+        for i, value in enumerate(exlist):
+            if value == -1:
+                break
+            try:
+                new_list[i+offset] = ids.index( value )
+            except ValueError:
+                # offset index to correct the list for values that are not part of the system
+                offset -= 1
+                #print("index {} was not found in atom list.".format(value))
+        return new_list
 
 class TransitionPotential(Potential):
+
+    def __init__(self):
+        super(TransitionPotential, self).__init__()
+
+    def removePolarizablePoints( self, coordinates, distance ):
+        """ The PE library does not remove anything, but it merely sets the polarizabilites
+            (and multipoles) to zero.
+        """
+        d2 = distance*distance
+
+        Cp = list(self.coordinates)
+        nCp = range(len(Cp))
+        nCp.reverse()
+
+        coordinates_to_remove = []
+
+        for iCp, p in enumerate(Cp):
+            for coord in coordinates:
+                dr = p - coord
+                R2 = dr.dot(dr)
+                #print("R = {0:12.6f}, D = {1:12.6f}".format(R2, d2))
+                if R2 < d2:
+                    coordinates_to_remove.append( iCp )
+
+        # make the list unique
+        coordinates_to_remove = [x for x in set(coordinates_to_remove)]
+        coordinates_to_remove.sort()
+        #coordinates_to_remove.reverse()
+
+        Ct = list(self.coordinates)
+        Cl = list(self.labels)
+        M0 = list(self._multipoles[0])
+        M1 = list(self._multipoles[1])
+        P2 = list(self.polarizabilities)
+        EX = self.exclusion_list
+
+        for i in coordinates_to_remove:
+            #print "removing point", i
+            #Ct.pop(i)
+            #Cl.pop(i)
+            M0[i] = [0.0]
+            M1[i] = [0.0, 0.0, 0.0]
+            P2[i] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            #EX.pop(i)
+
+        #self.coordinates = numpy.array(Ct)
+        #self.labels = Cl
+        self._multipoles[0] = numpy.array(M0)
+        self._multipoles[1] = numpy.array(M1)
+        #self.exclusion_list = EX
+        self.polarizabilities = numpy.array(P2)
+
+        self.coordinates_to_remove = coordinates_to_remove[:]
+        #print coordinates_to_remove
 
     def makeTransitionPotentialFromCharges(self, Ci, Qi):
         """ Sets the static part of the potential to zero
@@ -329,7 +494,7 @@ if __name__ == '__main__':
     import sys
     from solvers import IterativeSolver, IterativeDIISSolver
 
-    p1 = Potential.fromFile(sys.argv[1])
+    p1 = Potential.from_file(sys.argv[1])
     solver = IterativeDIISSolver(p1, threshold=1.0e-5, max_iter=30, verbose=True, diis_start_from_niter=1)
 
     muind = solver.Solve()
