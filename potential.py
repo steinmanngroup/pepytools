@@ -10,18 +10,20 @@ class Potential(object):
         pot = Potential.fromFile( "myfile.pot" )
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """ Create a potential without content
         """
+        self._verbose = kwargs.get('verbose', False)
+        self._debug = kwargs.get('debug', False)
         pass
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, **kwargs):
         """ Creates a potential from a file
             Arguments:
             filename -- the filename to instantiate the potential from
         """
-        a = cls()
+        a = cls(**kwargs)
         a._filename = filename
         (c, l, m, p, e) = read_potential(filename)
         a.coordinates = c
@@ -29,6 +31,76 @@ class Potential(object):
         a.multipoles = m
         a.polarizabilities = p
         a.exclusion_list = e
+        hasalpha = numpy.array(a.hasalpha)
+        a.field = numpy.zeros( 3*len(hasalpha[numpy.where(hasalpha>-1)] ))
+        return a
+
+    @classmethod
+    def from_multipoles(cls, coordinates, multipoles, **kwargs):
+        """ Creates a potential from a set of coordinates and multipoles
+            Arguments:
+            coordinates -- the coordinates of the multipoles in Bohr.
+            multipoles -- the multipoles to use at the specified coordinates.
+
+            the multipoles can either be a list of charges, such as
+            >> q = [[1.0], [-1.0], ...]
+
+            or
+            >> q = [1.0, -1.0, ...]
+
+            wheras dipoles must be specified as
+            >> d = [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], ...]
+        """
+        a = cls(**kwargs)
+
+        a.coordinates = numpy.array(coordinates)
+
+        Cl = ['Z' for c in coordinates]
+        a.labels = Cl
+
+        m = {0: [[0.0] for c in coordinates],
+             1: [[0.0, 0.0, 0.0] for c in coordinates],
+             2: [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in coordinates]}
+
+        # let's see if we have a 'list of stuff' or a dictionary
+        if type(multipoles) == type([]):
+            for i, value in enumerate(multipoles):
+                if type(value) == type([]) or type(value).__module__ == numpy.__name__:
+
+                    if len(value) > 3:
+                        raise ValueError("Multipole moments larger than dipoles currently not supported.")
+
+                    if len(value) == 2:
+                        raise ValueError("Multipole moments of length 2 is not understood")
+
+                    if len(value) == 1:
+                        # add the monopole
+                        m[0][i] = value
+                    else:
+                        # add a dipole
+                        m[1][i] = value
+
+                elif type(value) == type(0.0):
+                    m[0][i] = [value]
+                else:
+                    raise ValueError("Multipole moments not understood.")
+
+            a.multipoles = m
+        elif type(multipoles) == type({}):
+            a.multipoles = multipoles
+        else:
+            raise ValueError("Multipole moments not understood.")
+
+
+        # now we make fake polarizabilites and exclusion lists
+        e = {}
+        for i, c in enumerate(coordinates):
+            e[i] = numpy.array([-1])
+
+        p = [[0.0 for t in range(6)] for c in coordinates]
+
+        a.exclusion_list = e
+        a.polarizabilities = p
         return a
 
     def getCoordinates(self):
@@ -84,11 +156,14 @@ class Potential(object):
                   on the size of the tensor. Currently, it checks if the absolute
                   value of the maximum element is larger than zero.
         """
+        if len(polarizabilities) != self.nsites:
+            raise ValueError("Number of polarizabilities must match number of sites.")
+
         self._polarizabilities = polarizabilities
-        self._hasalpha = [-1 for p in polarizabilities]
+        self._hasalpha = numpy.array([-1 for p in polarizabilities])
         itensor = 0
         for i, tensor in enumerate(polarizabilities):
-            if numpy.abs(numpy.max(tensor)) > 0.0:
+            if numpy.abs(numpy.max(tensor)) > 0.001:
                 self._hasalpha[i] = itensor
                 itensor += 1
         self._npols = itensor
@@ -99,6 +174,8 @@ class Potential(object):
         return self._exclusion_list
 
     def setExclusionList(self, exclusion_list):
+        if self._debug:
+            print("DEBUG: Setting exclusion list with the following dimension: {} x {}".format(len(exclusion_list.keys()), len(exclusion_list[0])))
         self._exclusion_list = exclusion_list
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
@@ -118,7 +195,23 @@ class Potential(object):
 
     hasalpha = property(getHasAlpha, doc='List relating coordinate indices to polarizable points.')
 
-    def saveToFile(self, filename):
+    def get_static_field(self):
+        return self.field
+
+    def set_static_field(self, field):
+        """ Sets the static field either from a file or from a calculation
+        """
+        nfield = len(field)
+        ff = self.hasalpha
+        nalpha = 3*len(ff[numpy.where(ff > -1)])
+        nfieldm3 = nfield % 3 == 0
+        if len(field) == 3*len(ff[numpy.where(ff > -1)]) and len(field) % 3 == 0:
+            self.field = numpy.array(field)
+        else:
+            print("nfield = {} == 3 x nalpha = {} is {}, nfieldm3 = {}".format(nfield, nalpha, nfield == nalpha, nfieldm3))
+            raise ValueError("ERROR: The static field is not appropriate for this potential.")
+
+    def save(self, filename):
         """ Save the potential to a file.
 
             Arguments:
@@ -132,43 +225,53 @@ class Potential(object):
         """ Converts the potential to a string readable format
         """
         sc = "@COORDINATES\n{0}\nAA\n".format(self.nsites)
+        sm = ""
+        sp = ""
+        se = "\n"
         for label, coord in zip(self.labels, self.coordinates):
             cc = coord * BOHRTOAA
             sc += "{0:2s}{1:14.8f}{2:14.8f}{3:14.8f}\n".format(label, cc[0], cc[1], cc[2])
 
-        sm = "@MULTIPOLES\n"
-        for order in self.multipoles.keys():
-            sm += "ORDER {0}\n{1}\n".format(order, self.nsites)
-            for i, m in enumerate(self.multipoles[order]):
-                sm += "{0:3d}".format(i + 1)
-                for v in m:
-                    sm += "{0:14.8f}".format(v)
-                sm += "\n"
+        if hasattr(self, '_multipoles'):
+            sm = "@MULTIPOLES\n"
+            for order in self.multipoles.keys():
+                sm += "ORDER {0}\n{1}\n".format(order, self.nsites)
+                for i, m in enumerate(self.multipoles[order]):
+                    sm += "{0:3d}".format(i + 1)
+                    for v in m:
+                        sm += "{0:14.8f}".format(v)
+                    sm += "\n"
 
-        sp = "@POLARIZABILITIES\nORDER 1 1\n{0}\n".format(self.nsites)
-        for i, poltensor in enumerate(self.polarizabilities):
-            sp += "{0:3d}".format(i + 1)
-            for v in poltensor:
-                sp += "{0:14.8f}".format(v)
-            sp += "\n"
+        if hasattr(self, '_polarizabilities'):
+            sp = "@POLARIZABILITIES\nORDER 1 1\n{0}\n".format(self.nsites)
+            for i, poltensor in enumerate(self.polarizabilities):
+                sp += "{0:3d}".format(i + 1)
+                for v in poltensor:
+                    sp += "{0:14.8f}".format(v)
+                sp += "\n"
 
-        se = "EXCLISTS\n{0:d} {1:d}\n".format(self.nsites, len(self.exclusion_list[0]) + 1)
-        for i in self.exclusion_list.keys():
-            se += "{0:>5d}".format(i + 1)
-            excl = self.exclusion_list[i] + 1
-            for v in excl:
-                se += "{0:5d}".format(v)
-            se += "\n"
+            se = "EXCLISTS\n{0:d} {1:d}\n".format(self.nsites, len(self.exclusion_list[0]) + 1)
+            for i in self.exclusion_list.keys():
+                se += "{0:>5d}".format(i + 1)
+                excl = self.exclusion_list[i] + 1
+                for v in excl:
+                    se += "{0:5d}".format(v)
+                se += "\n"
 
         return sc + sm + sp + se[:-1]
 
     def __add__(self, other):
-        """ Adds two potential files together
+        """ Adds two potential files together.
+
+            >> p3 = p1 + p2
 
             The strategy is to make an empty potential and copy over
             everything from "self" and "other"
         """
         p = Potential()
+        p._verbose = self._verbose or other._verbose
+        p._debug = self._debug or other._debug
+
         c1 = list(self.coordinates)[:]
         c2 = list(other.coordinates)[:]
         c1.extend(c2)
@@ -183,21 +286,21 @@ class Potential(object):
         # here we just copy down everything
         m = dict()
         for key in self.multipoles:
-            m[key] = self.multipoles[key][:]
+            m[key] = list(self.multipoles[key][:])
             m[key].extend(other.multipoles[key][:])
         p.multipoles = m
 
         pol1 = self.polarizabilities[:]
         pol2 = other.polarizabilities[:]
         pol1.extend(pol2)
-        p.polarizabilities = pol1
+        p.polarizabilities = pol1[:]
 
         # exclusionlists have to be updated so that the id's in the
         # list reflect correct atoms. Offset items in the "other" by
         # the number of polarizable sites. Items with a "-1" should
         # not be updated
-        n1 = self.npols
-        n2 = other.npols
+        n1 = self.nsites
+        n2 = other.nsites
         e1 = self.exclusion_list.copy()
         e2 = other.exclusion_list.copy()
 
@@ -226,21 +329,20 @@ class Potential(object):
         p.exclusion_list = e1
         return p
 
-    def makeIsotropicPolarizabilities(self):
-        pol1 = self.polarizabilities[:]
-        pol2 = []
-        for pol in pol1:
-            value = (pol[0] + pol[3] + pol[5]) / 3.0
-            isopol = numpy.zeros(6)
-            isopol[0] = value
-            isopol[3] = value
-            isopol[5] = value
-            pol2.append(isopol)
-        self.polarizabilities = pol2[:]
-
     def __and__(self, other):
         """ Intersection can be computed for two potentials
             by finding appropriate overlapping atoms
+
+            >> p3 = p1 & p2
+
+            One is inclined to remember this 'famous' quote from the
+            GAMESS source code:
+
+                This code is hard to read, impossible to debug,
+                but it works!
+
+            so to all heathen people, this part of the code has not
+            been the most pleasant of adventures.
         """
 
         satoms = []
@@ -248,8 +350,8 @@ class Potential(object):
 
         slen = self.nsites
         olen = other.nsites
-        sc = numpy.array( self.coordinates )
-        oc = numpy.array( other.coordinates )
+        sc = numpy.array(self.coordinates)
+        oc = numpy.array(other.coordinates)
 
         try:
             from intersect import intersect
@@ -305,11 +407,17 @@ class Potential(object):
                         satoms.append(ic)
                         oatoms.append(jc)
                         break
+        # end of try-statement
 
-        # make inverted satoms list
+        # make inverted atom lists to save computation time
+        # later on
         smotas = numpy.zeros(max(satoms)+1, dtype=int) -1
         for i, value in enumerate(satoms):
             smotas[value] = i
+
+        smotao = numpy.zeros(max(oatoms)+1, dtype=int) -1
+        for i, value in enumerate(oatoms):
+            smotao[value] = i
 
         # transfer stuff
         p = Potential()
@@ -319,29 +427,77 @@ class Potential(object):
         m = dict()
         e = dict()
 
+        # so we generate the intersected potential from
+        # the "self" using the generated data structures
+        # above to find common atoms (and properties).
+        #
+        # the hard part here is the fields which must be
+        # converted from the atom indexing in "other" to
+        # one that matches "self" so that they can be
+        # correctly dotted later on to give properties.
+        sfields_remove = range(slen)
+        ofields_remove = range(olen)
         for i, ic in enumerate(satoms):
             c.append( self.coordinates[ic] )
             l.append( self.labels[ic] )
             pol.append( self.polarizabilities[ic] )
 
             ex_unfixed = self.exclusion_list[ic]
-            ex_fixed = self.fix_exclusion_list( ex_unfixed, satoms, smotas )
+            ex_fixed = self.fix_exclusion_list( ex_unfixed, smotas )
             e[i] = numpy.array(ex_fixed[:])
+
+            sfields_remove[ic] = -1
+            ofields_remove[ oatoms[i] ] = -1
 
         for key in self.multipoles:
             m[key] = []
             for ic in satoms:
-                m[key].append(self.multipoles[key][ic])
+                m[key] = list(numpy.zeros(numpy.shape(self._multipoles[key])))
 
         p.coordinates = numpy.array(c)
-        p.labels = numpy.array(l)
+        p.labels = l
         p.multipoles = m
         p.polarizabilities = pol[:]
         p.exclusion_list = e
 
+        f1o = self.get_static_field()
+        f2o = other.get_static_field()
+        nf1o = len(f1o)
+        nf2o = len(f2o)
+        f1o = f1o.reshape((nf1o/3, 3))
+        f2o = f2o.reshape((nf2o/3, 3))
+
+        f1 = []
+        for i, ic in enumerate(sfields_remove):
+            ii = smotas[i]
+
+            if ii == -1:
+                continue
+
+            if ic == -1 and p.hasalpha[ii] != -1:
+                f1.append(f1o[ii])
+
+        f2 = []
+        for i, ic in enumerate(ofields_remove):
+            ii = smotao[i]
+
+            if ii == -1:
+                continue
+
+            if ic == -1 and p.hasalpha[ii] != -1:
+                f2.append(f2o[ii])
+
+        p.f1 = numpy.ravel(f1)
+        p.f2 = numpy.ravel(f2)
         return p
 
-    def fix_exclusion_list( self, exlist, ids, sdi ):
+    def fix_exclusion_list( self, exlist, sdi ):
+        """ corrects an exclusion list 'exlist' by converting and/or
+            removing elements from an old index to a new
+
+            Arguments
+            exlist -- the exlcusion list
+        """
         new_list = [-1 for i in exlist]
         offset = 0
         for i, value in enumerate(exlist):
@@ -354,12 +510,22 @@ class Potential(object):
             new_list[i+offset] = sdi[value]
         return new_list
 
-class TransitionPotential(Potential):
+    def make_isotropic_polarizabilites(self):
+        """ Converts all anisotropic polarizabilities into
+            their isotropic counterparts
+        """
+        pol1 = self.polarizabilities[:]
+        pol2 = []
+        for pol in pol1:
+            value = (pol[0] + pol[3] + pol[5]) / 3.0
+            isopol = numpy.zeros(6)
+            isopol[0] = value
+            isopol[3] = value
+            isopol[5] = value
+            pol2.append(isopol)
+        self.polarizabilities = pol2[:]
 
-    def __init__(self):
-        super(TransitionPotential, self).__init__()
-
-    def removePolarizablePoints( self, coordinates, distance ):
+    def remove_polarizable_points( self, coordinates, distance ):
         """ The PE library does not remove anything, but it merely sets the polarizabilites
             (and multipoles) to zero.
         """
@@ -382,123 +548,32 @@ class TransitionPotential(Potential):
         # make the list unique
         coordinates_to_remove = [x for x in set(coordinates_to_remove)]
         coordinates_to_remove.sort()
-        #coordinates_to_remove.reverse()
+        if self._debug:
+            print("Found {} points to remove".format(len(coordinates_to_remove)))
 
         Ct = list(self.coordinates)
         Cl = list(self.labels)
         M0 = list(self._multipoles[0])
         M1 = list(self._multipoles[1])
         P2 = list(self.polarizabilities)
-        EX = self.exclusion_list
 
         for i in coordinates_to_remove:
-            #print "removing point", i
-            #Ct.pop(i)
-            #Cl.pop(i)
             M0[i] = [0.0]
             M1[i] = [0.0, 0.0, 0.0]
             P2[i] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-            #EX.pop(i)
 
-        #self.coordinates = numpy.array(Ct)
-        #self.labels = Cl
         self._multipoles[0] = numpy.array(M0)
         self._multipoles[1] = numpy.array(M1)
-        #self.exclusion_list = EX
-        self.polarizabilities = numpy.array(P2)
+        self.polarizabilities = P2[:]
 
-        self.coordinates_to_remove = coordinates_to_remove[:]
-        #print coordinates_to_remove
-
-    def makeTransitionPotentialFromCharges(self, Ci, Qi):
-        """ Sets the static part of the potential to zero
-
-            Arguments:
-            Ci -- Coordinates of the transition density charges
-            Qi -- Transition density charges
+    def make_transition_potential(self):
+        """ Sets the static part of the potential equal to zero
         """
-        self.makeTransitionPotential()
-
-        Ct = list(self.coordinates)
-        Ct.extend(Ci)
-        self.coordinates = numpy.array(Ct)
-
-        Cl = list(self.labels)
-        Cl.extend(['Z' for c in Ci])
-        self.labels = Cl
-
-        # adds new charges
-        M0 = list(self._multipoles[0])
-        M0.extend([[q] for q in Qi])
-        self._multipoles[0] = numpy.array(M0)
-
-        # dipoles
-        M1 = list(self._multipoles[1])
-        M1.extend([[0.0, 0.0, 0.0] for q in Qi])
-        self._multipoles[1] = numpy.array(M1)
-
-        # adds new zero polarizabilities
-        # adds new exclusion list
-        P2 = list(self.polarizabilities)
-        ex = self.exclusion_list
-        maxex = max(ex.keys()) + 1
-        lenex = len(ex[0])
-        for k in range(maxex, maxex + len(Ci)):
-            ex[k] = numpy.array([-1 for t in range(lenex)])
-            P2.append(numpy.array([0.0 for t in range(6)]))
-
-        self.exclusion_list = ex
-        self.polarizabilities = numpy.array(P2)
-
-    def makeTransitionPotentialFromDipole(self, Ci, Mui):
-        """ Sets the static part of the potential to zero
-
-            Arguments:
-            Ci  -- coordinate of the transition dipole
-            Mui -- Transition dipole
-        """
-        self.makeTransitionPotential()
-
-        Ct = list(self.coordinates)
-        Ct.extend(Ci)
-        self.coordinates = numpy.array(Ct)
-
-        Cl = list(self.labels)
-        Cl.extend(['Z' for c in Ci])
-        self.labels = Cl
-
-        # adds new charges
-        M0 = list(self._multipoles[0])
-        M0.extend([[0.0] for q in [0]])
-        self._multipoles[0] = numpy.array(M0)
-
-        # dipoles
-        M1 = list(self._multipoles[1])
-        M1.extend([Mui])
-        self._multipoles[1] = numpy.array(M1)
-
-        # adds new zero polarizabilities
-        # adds new exclusion list
-        P2 = list(self.polarizabilities)
-        ex = self.exclusion_list
-        maxex = max(ex.keys()) + 1
-        lenex = len(ex[0])
-        for k in range(maxex, maxex + len(Ci)):
-            ex[k] = numpy.array([-1 for t in range(lenex)])
-            P2.append(numpy.array([0.0 for t in range(6)]))
-
-        self.exclusion_list = ex
-        self.polarizabilities = numpy.array(P2)
-
-    def makeTransitionPotential(self):
         for key in self._multipoles:
             self.multipoles[key] = numpy.zeros(numpy.shape(self._multipoles[key]))
 
 if __name__ == '__main__':
     import sys
-    from solvers import IterativeSolver, IterativeDIISSolver
-
     p1 = Potential.from_file(sys.argv[1])
-    solver = IterativeDIISSolver(p1, threshold=1.0e-5, max_iter=30, verbose=True, diis_start_from_niter=1)
 
-    muind = solver.Solve()
+    print p1

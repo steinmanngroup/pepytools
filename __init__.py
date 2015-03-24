@@ -1,4 +1,4 @@
-from potential import Potential, TransitionPotential
+from potential import Potential
 
 from solvers import IterativeSolver, IterativeDIISSolver
 
