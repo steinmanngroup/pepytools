@@ -34,16 +34,13 @@ def get_static_field(potential, **kwargs):
             ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
             q = numpy.array([q[0] for q in potential.multipoles[0]])
             d = numpy.array([d for d in potential.multipoles[1]])
-            #print "FIELD 1", 3*potential.npols, numpy.shape(potential.coordinates), potential.nsites, numpy.shape(potential.hasalpha), numpy.shape(ex), numpy.shape(ex)[0]*3
-            #print potential.nsites, numpy.shape(ex), numpy.shape(q), numpy.shape(d), nump
-            F_static = fstatic_field(potential.npols, potential.coordinates, potential.hasalpha, ex, q, d)
-            #print "FIELD 2", len(F_static)
+            F_static = fstatic_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
         except ImportError:
             if verbose:
                 print("INFO: static field calculated using (slow) python version.")
             offset = 0
             for isite in range(potential.nsites):
-                itensor = potential.hasalpha[isite]
+                itensor = potential.has_alpha[isite]
                 is_polarizable_point = (itensor > -1)
                 Ri = potential.coordinates[isite]
     
@@ -57,7 +54,7 @@ def get_static_field(potential, **kwargs):
                         if jsite in iexclusion_list:
                             continue
     
-                        jtensor = potential.hasalpha[jsite]
+                        jtensor = potential.has_alpha[jsite]
                         js_polarizable_point = (jtensor > -1)
                         Rj = potential.coordinates[jsite]
                         Qj = potential.multipoles[0][jsite]

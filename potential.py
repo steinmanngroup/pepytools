@@ -5,9 +5,15 @@ from constants import BOHRTOAA
 
 
 class Potential(object):
-    """ Instantiated using a Polarizable Embedding (PE) potential file.
+    """ Representation of a polarizable embedding (PE) potential with
+        coordinates, multipole moments, polarizabilities and
+        exclusion lists.
 
-        pot = Potential.fromFile( "myfile.pot" )
+        Usually instantiated potential file
+        >> pot = Potential.from_file( "myfile.pot" )
+
+        The potential parameters can be accessed through its many
+        properties.
     """
 
     def __init__(self, **kwargs):
@@ -31,7 +37,7 @@ class Potential(object):
         a.multipoles = m
         a.polarizabilities = p
         a.exclusion_list = e
-        hasalpha = numpy.array(a.hasalpha)
+        hasalpha = numpy.array(a.has_alpha)
         a.field = numpy.zeros( 3*len(hasalpha[numpy.where(hasalpha>-1)] ))
         return a
 
@@ -180,20 +186,23 @@ class Potential(object):
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
 
-    def getNSites(self):
+    @property
+    def nsites(self):
+        """ The number of classical sites."""
         return self._nsites
 
-    nsites = property(getNSites, doc='Gets the number of classical sites.')
-
-    def getNPols(self):
+    @property
+    def npols(self):
+        """ The number of polarizable points."""
         return self._npols
 
-    npols = property(getNPols, doc='Gets the number of polarizable points.')
+    @property
+    def has_alpha(self):
+        """ list relating coordinate induces to polarizable points.
 
-    def getHasAlpha(self):
+            a value of -1 means that the point is not polarizable
+        """
         return self._hasalpha
-
-    hasalpha = property(getHasAlpha, doc='List relating coordinate indices to polarizable points.')
 
     def get_static_field(self):
         return self.field
@@ -202,7 +211,7 @@ class Potential(object):
         """ Sets the static field either from a file or from a calculation
         """
         nfield = len(field)
-        ff = self.hasalpha
+        ff = self.has_alpha
         nalpha = 3*len(ff[numpy.where(ff > -1)])
         nfieldm3 = nfield % 3 == 0
         if len(field) == 3*len(ff[numpy.where(ff > -1)]) and len(field) % 3 == 0:
@@ -419,7 +428,7 @@ class Potential(object):
         for i, value in enumerate(oatoms):
             smotao[value] = i
 
-        # transfer stuff
+        # get ready to transfer stuff
         p = Potential()
         c = []
         l = []
@@ -442,10 +451,14 @@ class Potential(object):
             l.append( self.labels[ic] )
             pol.append( self.polarizabilities[ic] )
 
+            # update the exclusion list to remove any points
+            # that are removed
             ex_unfixed = self.exclusion_list[ic]
             ex_fixed = self.fix_exclusion_list( ex_unfixed, smotas )
             e[i] = numpy.array(ex_fixed[:])
 
+            # this takes care of electric field indexing for
+            # BOTH the self field and the other field
             sfields_remove[ic] = -1
             ofields_remove[ oatoms[i] ] = -1
 
@@ -474,7 +487,7 @@ class Potential(object):
             if ii == -1:
                 continue
 
-            if ic == -1 and p.hasalpha[ii] != -1:
+            if ic == -1 and p.has_alpha[ii] != -1:
                 f1.append(f1o[ii])
 
         f2 = []
@@ -484,7 +497,7 @@ class Potential(object):
             if ii == -1:
                 continue
 
-            if ic == -1 and p.hasalpha[ii] != -1:
+            if ic == -1 and p.has_alpha[ii] != -1:
                 f2.append(f2o[ii])
 
         p.f1 = numpy.ravel(f1)

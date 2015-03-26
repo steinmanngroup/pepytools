@@ -44,20 +44,24 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
     double precision dot3
     logical inlist
 
+    save dRij, Rij, uRij, R1i, R2i, R3i, R5i, M0, M1
+    !$OMP THREADPRIVATE(dRij, Rij, uRij, R1i, R2i, R3i, R5i, M0, M1)
+
+
     field = 0.0d0
     ! increase by 1 to get fortran style indices
     hasalpha = hasalpha+1
 
-    ioffset = 1
+    !$OMP PARALLEL DO PRIVATE(i,j,ioffset,itensor,iexclusion_list)  REDUCTION(+:field)
     do i=1,nsites
         itensor = hasalpha(i)
+        ioffset = (itensor-1)*3+1
         if (itensor .eq. 0) then
             cycle
         endif
         ! fortran style indices
         iexclusion_list = exclusion_list(i,:) + 1
 
-        !$OMP PARALLEL DO PRIVATE(j,dRij,Rij,R1i,R2i,R3i,R5i,uRij,M0,M1) REDUCTION(+:field)
         do j=1,nsites
             ! never interact with yourself
             if( i .eq. j ) then
@@ -92,9 +96,9 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
             field(ioffset:ioffset+2) = field(ioffset:ioffset+2) + M0
             field(ioffset:ioffset+2) = field(ioffset:ioffset+2) + M1
         enddo
-        !$OMP END PARALLEL DO
-        ioffset = ioffset + 3
+        !ioffset = ioffset + 3
     enddo
+    !$OMP END PARALLEL DO
     return
 end subroutine fstatic_field
 
@@ -119,7 +123,7 @@ subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_
 !f2py intent(in) :: hasalpha
 !f2py intent(in) :: exclusion_list
 
-    integer i, itensor, iexclusion_list, ioffset
+    integer i, itensor, iexclusion_list
     integer ii,jj,iii,jjj
     integer j, jtensor
     double precision dRij, Rij, R1i, R2i, R3i, R5i
@@ -129,10 +133,15 @@ subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_
     double precision dot3
     logical inlist
 
+    save dRij, Rij, R1i, R2i, R3i, R5i, ii,jj,iii,jjj,itensor,jtensor
+    !$OMP THREADPRIVATE(dRij, Rij, R1i, R2i, R3i, R5i,ii,jj,iii,jjj,itensor,jtensor)
+
     ! increase by 1 to get fortran style indices
     hasalpha = hasalpha+1
 
-    ioffset = 1
+    TT = 0.0d0
+
+    !$OMP PARALLEL DO PRIVATE (i,j,iexclusion_list)
     do i = 1, nsites
         itensor = hasalpha(i)
 
@@ -175,8 +184,8 @@ subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_
                enddo
             enddo
         enddo
-        ioffset = ioffset + 3
     enddo
+    !$OMP END PARALLEL DO
 
     return
 
