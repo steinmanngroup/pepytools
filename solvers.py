@@ -228,7 +228,7 @@ def get_polarization_matrix(potential, **kwargs):
 
     Aij = numpy.zeros((3 * potential.npols, 3 * potential.npols))
     for isite in range(potential.nsites):
-        itensor = potential.hasalpha[isite]
+        itensor = potential.has_alpha[isite]
         if itensor == -1:
             continue
 
@@ -258,12 +258,12 @@ def get_interaction_matrix(potential, **kwargs):
         ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
         q = numpy.array([q[0] for q in potential.multipoles[0]])
         d = numpy.array([d for d in potential.multipoles[1]])
-        return generate_tt(potential.npols, potential.coordinates, potential.hasalpha, ex)
+        return generate_tt(potential.npols, potential.coordinates, potential.has_alpha, ex)
     except:
         if verbose:
             print("INFO: interaction matrix calculated using (slow) python version.")
         for isite in range(potential.nsites):
-            itensor = potential.hasalpha[isite]
+            itensor = potential.has_alpha[isite]
             is_polarizable_point = (itensor > -1)
             Ri = potential.coordinates[isite]
 
@@ -277,7 +277,7 @@ def get_interaction_matrix(potential, **kwargs):
                     if jsite == isite:
                         continue
 
-                    jtensor = potential.hasalpha[jsite]
+                    jtensor = potential.has_alpha[jsite]
                     js_polarizable_point = (jtensor > -1)
                     Rj = potential.coordinates[jsite]
 
@@ -301,6 +301,6 @@ if __name__ == '__main__':
     import sys
     from potential import Potential
     filename = sys.argv[1]
-    potential = Potential(filename)
-    s = IterativeSolver(potential, verbose=True)
+    potential = Potential.from_file(filename)
+    s = IterativeDIISSolver(potential, verbose=True)
     s.Solve()
