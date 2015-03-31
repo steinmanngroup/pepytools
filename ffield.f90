@@ -52,7 +52,7 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
     ! increase by 1 to get fortran style indices
     hasalpha = hasalpha+1
 
-    !$OMP PARALLEL DO PRIVATE(i,j,ioffset,itensor,iexclusion_list)  REDUCTION(+:field)
+    !$OMP PARALLEL DO PRIVATE(i,j,ioffset,itensor,iexclusion_list) REDUCTION(+:field)
     do i=1,nsites
         itensor = hasalpha(i)
         ioffset = (itensor-1)*3+1
@@ -141,6 +141,10 @@ subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_
 
     TT = 0.0d0
 
+    ! so a REDUCTION is apparently not needed here because
+    ! the matrix TT is only ever updated in discreet sub blocks.
+    ! trying to do REDUCTION crashes the program, perhaps because
+    ! of a memory issue
     !$OMP PARALLEL DO PRIVATE (i,j,iexclusion_list)
     do i = 1, nsites
         itensor = hasalpha(i)

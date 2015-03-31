@@ -69,17 +69,22 @@ class Potential(object):
              2: [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in coordinates]}
 
         # let's see if we have a 'list of stuff' or a dictionary
-        if type(multipoles) == type([]):
+        if type(multipoles) == type([]) or type(multipoles).__module__ == numpy.__name__:
             for i, value in enumerate(multipoles):
+
                 if type(value) == type([]) or type(value).__module__ == numpy.__name__:
 
-                    if len(value) > 3:
+                    # numpy.float64 can enter this block and applying "len" to it is void.
+                    if type(value) == numpy.float64:
+                        m[0][i] = [float(value)]
+
+                    elif len(value) > 3:
                         raise ValueError("Multipole moments larger than dipoles currently not supported.")
 
-                    if len(value) == 2:
+                    elif len(value) == 2:
                         raise ValueError("Multipole moments of length 2 is not understood")
 
-                    if len(value) == 1:
+                    elif len(value) == 1:
                         # add the monopole
                         m[0][i] = value
                     else:
