@@ -254,7 +254,7 @@ def get_interaction_matrix(potential, **kwargs):
     verbose = kwargs.get('verbose', False)
     TT = numpy.zeros((3 * potential.npols, 3 * potential.npols))
     try:
-        from ffield import interaction_matrix
+        from field import interaction_matrix
         ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
         q = numpy.array([q[0] for q in potential.multipoles[0]])
         d = numpy.array([d for d in potential.multipoles[1]])
