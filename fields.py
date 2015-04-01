@@ -29,15 +29,15 @@ def get_static_field(potential, **kwargs):
         if verbose:
             print("Loading static field from file '{0}'".format(filename))
 
-        return get_static_field_from_file(potential, filename)
+        f_static = get_static_field_from_file(potential, filename)
     else:
 
         try:
-            from ffield import fstatic_field
+            from ffield import static_field
             ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
             q = numpy.array([q[0] for q in potential.multipoles[0]])
             d = numpy.array([d for d in potential.multipoles[1]])
-            F_static = fstatic_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
+            F_static = static_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
         except ImportError:
             if verbose:
                 print("INFO: static field calculated using (slow) python version.")

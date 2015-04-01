@@ -1,6 +1,6 @@
 !> Calculates the static electric field from a set of nsites charges, dipoles
 !> and eventually quadrupoles on npols polarizable points.
-subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_list,charges,dipoles)
+subroutine static_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_list,charges,dipoles)
 
     implicit none
     integer nsites
@@ -101,7 +101,7 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
     !$OMP END DO
     !$OMP END PARALLEL
     return
-end subroutine fstatic_field
+end subroutine static_field
 
 subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list )
     implicit none
