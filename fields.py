@@ -1,3 +1,6 @@
+""" obtain the static field from a set of charges and
+    dipoles at polarizable points.
+"""
 import numpy
 
 def get_static_field_from_file( potential, filename ):

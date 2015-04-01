@@ -2,8 +2,6 @@
 !> and eventually quadrupoles on npols polarizable points.
 subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_list,charges,dipoles)
 
-    use omp_lib
-
     implicit none
     integer nsites
     integer npols
@@ -105,7 +103,7 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
     return
 end subroutine fstatic_field
 
-subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list )
+subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list )
     implicit none
     integer nsites
     integer npols
@@ -196,7 +194,7 @@ subroutine generate_tt( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_
 
     return
 
-end subroutine generate_tt
+end subroutine interaction_matrix
 
 function dot3( U, V )
     implicit none
@@ -205,7 +203,7 @@ function dot3( U, V )
     double precision dot3
     dot3 = U(1)*V(1) + U(2)*V(2) + U(3)*V(3)
     return
-end function
+end function dot3
 
 function inlist( ival, n, ilist )
     implicit none
@@ -220,4 +218,4 @@ function inlist( ival, n, ilist )
         endif
     enddo
     return
-end function
+end function inlist
