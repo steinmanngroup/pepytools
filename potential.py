@@ -21,6 +21,7 @@ class Potential(object):
         """
         self._verbose = kwargs.get('verbose', False)
         self._debug = kwargs.get('debug', False)
+        self._isbohr = kwargs.get('bohr', False)
         pass
 
     @classmethod
@@ -238,12 +239,18 @@ class Potential(object):
     def __str__(self):
         """ Converts the potential to a string readable format
         """
-        sc = "@COORDINATES\n{0}\nAA\n".format(self.nsites)
+        units = 'AA'
+        factor = BOHRTOAA
+        if self._isbohr:
+            units = 'AU'
+            factor = 1.0
+
+        sc = "@COORDINATES\n{0}\n{1}\n".format(self.nsites, units)
         sm = ""
         sp = ""
         se = "\n"
         for label, coord in zip(self.labels, self.coordinates):
-            cc = coord * BOHRTOAA
+            cc = coord * factor
             sc += "{0:2s}{1:14.8f}{2:14.8f}{3:14.8f}\n".format(label, cc[0], cc[1], cc[2])
 
         if hasattr(self, '_multipoles'):
