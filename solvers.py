@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
     from fields import get_static_field
     from potential import Potential
-    from solvers import get_interaction_matrix, get_polarization_matrix
+    from util import get_interaction_matrix, get_polarization_matrix
 
     filename = sys.argv[1]
     p = Potential.from_file(filename)
