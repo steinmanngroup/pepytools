@@ -52,7 +52,9 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
     ! increase by 1 to get fortran style indices
     hasalpha = hasalpha+1
 
-    !$OMP PARALLEL DO PRIVATE(i,j,ioffset,itensor,iexclusion_list) REDUCTION(+:field)
+    !$OMP PARALLEL
+    !$OMP DO PRIVATE(i,j,ioffset,itensor,iexclusion_list) & 
+    !$OMP REDUCTION(+:field)
     do i=1,nsites
         itensor = hasalpha(i)
         ioffset = (itensor-1)*3+1
@@ -98,7 +100,8 @@ subroutine fstatic_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_li
         enddo
         !ioffset = ioffset + 3
     enddo
-    !$OMP END PARALLEL DO
+    !$OMP END DO
+    !$OMP END PARALLEL
     return
 end subroutine fstatic_field
 
