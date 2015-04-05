@@ -29,9 +29,9 @@ subroutine intersect(ids, nids, idsadd, nc1, c1, nc2, c2)
     EPS2 = 1.0D-4
     ids = -1
 
-    ! we take the shorter one as the reference
+    ! we take the longer one as the reference
     n = nc1
-    if (nc2 .lt. nc1) then
+    if (nc2 .gt. nc1) then
         n = nc2
     endif
 
@@ -47,30 +47,30 @@ subroutine intersect(ids, nids, idsadd, nc1, c1, nc2, c2)
         endif
     enddo
 
-    ! stuff might be moved around a little because
-    ! atoms are deleted
-    do i = 1, n
-        if (inlist(i, nids, ids(:,1))) then
-            goto 90
-        endif
-
-        do j = -4, 4
-            if (j.eq.0) then
-                goto 80
-            endif
-            dr = c1(i,:) - c2(i+j,:)
-            R2 = dot3(dr, dr)
-            if (R2 .lt. EPS2) then
-                ids(idsadd,1) = i
-                ids(idsadd,2) = i+j
-                idsadd = idsadd + 1
-                goto 90
-            endif
-80          continue
-        enddo
-
-90     continue
-    enddo
+!    ! stuff might be moved around a little because
+!    ! atoms are deleted
+!    do i = 1, n
+!        if (inlist(i, nids, ids(:,1))) then
+!            goto 90
+!        endif
+!
+!        do j = -1, 1
+!            if (j.eq.0) then
+!                goto 80
+!            endif
+!            dr = c1(i,:) - c2(i+j,:)
+!            R2 = dot3(dr, dr)
+!            if (R2 .lt. EPS2) then
+!                ids(idsadd,1) = i
+!                ids(idsadd,2) = i+j
+!                idsadd = idsadd + 1
+!                goto 90
+!            endif
+!80          continue
+!        enddo
+!
+!90     continue
+!    enddo
 
     ! now we just do a pair-wise comparison for the
     ! rest of the coordinates
@@ -98,8 +98,8 @@ subroutine intersect(ids, nids, idsadd, nc1, c1, nc2, c2)
     enddo
 
     ! return python-style indexing
-    idsadd = idsadd -1
-    ids = ids -1
+    idsadd = idsadd - 1
+    ids = ids - 1
 
     return
 end subroutine
