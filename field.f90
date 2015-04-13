@@ -103,7 +103,7 @@ subroutine static_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_lis
     return
 end subroutine static_field
 
-subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list )
+subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list, alphas )
     implicit none
     integer nsites
     integer npols
@@ -112,10 +112,12 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
     double precision coord
     double precision exclusion_list
     integer hasalpha
+    double precision alphas
     dimension TT(3*npols,3*npols)
     dimension coord(nsites,3)
     dimension hasalpha(nsites)
     dimension exclusion_list(nsites,nexclude)
+    dimension alphas(npols)
 !f2py intent(out) :: TT
 !f2py intent(in) :: nsites
 !f2py intent(in) :: npols
@@ -123,6 +125,7 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
 !f2py intent(in) :: coordinates
 !f2py intent(in) :: hasalpha
 !f2py intent(in) :: exclusion_list
+!f2py intent(in) :: alphas
 
     integer i, itensor, iexclusion_list
     integer ii,jj,iii,jjj
@@ -134,8 +137,12 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
     double precision dot3
     logical inlist
 
-    save dRij, Rij, R1i, R2i, R3i, R5i, ii,jj,iii,jjj,itensor,jtensor
-    !$OMP THREADPRIVATE(dRij, Rij, R1i, R2i, R3i, R5i,ii,jj,iii,jjj,itensor,jtensor)
+    ! screening variables
+    double precision d6i, FE, FT, factor, temp
+    parameter( d6i = 1.0d0 / 6.0d0 )
+
+    save dRij, Rij, R1i, R2i, R3i, R5i, ii,jj,iii,jjj,itensor,jtensor,temp,factor,FT,FE
+    !$OMP THREADPRIVATE(dRij, Rij, R1i, R2i, R3i, R5i,ii,jj,iii,jjj,itensor,jtensor,temp,factor,FT,FE)
 
     ! increase by 1 to get fortran style indices
     hasalpha = hasalpha+1
@@ -177,14 +184,28 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
             R3i = R2i * R1i
             R5i = R3i * R2i
 
+            ! Thole damping
+            ! JPC A 102 (1998) 2399 and Mol. Sim. 32 (2006) 471
+            ! factor = a * u , where a = 2.1304 (default) and u = R / (alpha_i * alpha_j)**(1/6)
+            FE = 1.0d0
+            FT = 1.0d0
+            factor = 0.0d0
+
+            temp = (alphas(i)*alphas(j))**d6i
+            factor = 2.1304 * Rij / temp
+            ! the screening is from appendix A in the mol. sin. paper
+            FE = 1.0d0 - (1.0d0 + factor + 0.5d0*factor**2)*exp(-factor)
+            FT = FE - (d6i * factor**3)*exp(-factor)
+
+
             ! update subblocks of interaction matrix
             do ii=1,3
                do jj=1,3
                    iii = 3*(itensor-1)+ii
                    jjj = 3*(jtensor-1)+jj
-                   TT(iii,jjj) = 3.0d0 * dRij(ii) * dRij(jj) * R5i
+                   TT(iii,jjj) = FT * 3.0d0 * dRij(ii) * dRij(jj) * R5i
                    if (ii.eq.jj) then
-                       TT(iii,jjj) = TT(iii,jjj) - R3i
+                       TT(iii,jjj) = TT(iii,jjj) - FE*R3i
                    endif
                enddo
             enddo
