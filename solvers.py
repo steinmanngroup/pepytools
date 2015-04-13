@@ -43,7 +43,7 @@ class IterativeSolver(BaseSolver):
 
             A is known as the polarization matrix and T is the interaction matrix.
             F is the field or potential that through the polarization matrix
-            generats the property of interest, S.
+            generates the property of interest, S.
         """
         if self.verbose:
             print("{0:>6s}{1:>16s}{2:>16s}{3:>16s}".format("iter", "energy", "rms error", "max error"))
