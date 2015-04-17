@@ -89,7 +89,7 @@ subroutine static_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_lis
             R5i = R3i * R2i
 
             ! M0: charge, M1: dipole
-            M0 = uRij * R2i * charges(j)
+            M0 = dRij * R3i * charges(j)
             M1 = - dipoles(j,:) * R3i
             M1 = M1 + 3.0d0*dRij*R5i*dot3( dRij, dipoles(j,:) )
 
@@ -103,7 +103,7 @@ subroutine static_field(field,nsites,nexclude,npols,coord,hasalpha,exclusion_lis
     return
 end subroutine static_field
 
-subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list, alphas )
+subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exclusion_list, alphas, damping, damping_factor )
     implicit none
     integer nsites
     integer npols
@@ -113,6 +113,8 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
     double precision exclusion_list
     integer hasalpha
     double precision alphas
+    logical damping
+    double precision damping_factor
     dimension TT(3*npols,3*npols)
     dimension coord(nsites,3)
     dimension hasalpha(nsites)
@@ -191,11 +193,14 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
             FT = 1.0d0
             factor = 0.0d0
 
-            temp = (alphas(i)*alphas(j))**d6i
-            factor = 2.1304 * Rij / temp
-            ! the screening is from appendix A in the mol. sin. paper
-            FE = 1.0d0 - (1.0d0 + factor + 0.5d0*factor**2)*exp(-factor)
-            FT = FE - (d6i * factor**3)*exp(-factor)
+            if (damping) then
+                temp = (alphas(i)*alphas(j))**d6i
+                factor = damping_factor * Rij / temp
+                ! the screening is from appendix A in the mol. sim. paper
+                FE = 1.0d0 - (1.0d0 + factor + 0.5d0*factor**2)*exp(-factor)
+                FT = FE - (d6i * factor**3)*exp(-factor)
+                !print '(A,4I6,3F20.4)', "CSS", i,j, itensor, jtensor, factor, FE, FT
+            endif
 
 
             ! update subblocks of interaction matrix

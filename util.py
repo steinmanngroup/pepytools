@@ -1,6 +1,15 @@
 import numpy
 import numpy.linalg
 
+def center_of_mass( coordinates, masses=None ):
+    total_mass = 0.0
+    c = numpy.zeros(3)
+    for cin,mass in zip(coordinates, masses):
+        c += cin * mass
+        total_mass += mass
+
+    return c / total_mass
+
 def get_polarization_matrix(potential, **kwargs):
 
     Aij = numpy.zeros((3 * potential.npols, 3 * potential.npols))
@@ -29,6 +38,9 @@ def get_polarization_matrix(potential, **kwargs):
 
 def get_interaction_matrix(potential, **kwargs):
     verbose = kwargs.get('verbose', False)
+    damping = kwargs.get('induced_damping', False)
+    damping_factor = kwargs.get('induced_damping_factor', 2.1304)
+
     from field import interaction_matrix
     ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
     q = numpy.array([q[0] for q in potential.multipoles[0]])
@@ -36,5 +48,5 @@ def get_interaction_matrix(potential, **kwargs):
     a = []
     for aa in potential.polarizabilities:
         if numpy.sum(numpy.abs(aa)) > 0.0001:
-            a.append(1.0/3.0*(aa[0] + aa[3] + aa[5]))
-    return interaction_matrix(potential.coordinates, potential.has_alpha, ex, a)
+            a.append((aa[0] + aa[3] + aa[5])/3.0)
+    return interaction_matrix(potential.coordinates, potential.has_alpha, ex, a, damping, damping_factor)

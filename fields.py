@@ -29,7 +29,7 @@ def get_static_field(potential, **kwargs):
         if verbose:
             print("Loading static field from file '{0}'".format(filename))
 
-        f_static = get_static_field_from_file(potential, filename)
+        F_static = get_static_field_from_file(potential, filename)
     else:
 
         try:
