@@ -1,7 +1,9 @@
 import numpy
-import numpy.linalg
 
-def center_of_mass( coordinates, masses=None ):
+def center_of_mass( coordinates, masses ):
+    """ Calculates the center of mass given a set of
+        coordinates and masses
+    """
     total_mass = 0.0
     c = numpy.zeros(3)
     for cin,mass in zip(coordinates, masses):
@@ -9,6 +11,13 @@ def center_of_mass( coordinates, masses=None ):
         total_mass += mass
 
     return c / total_mass
+
+def average_dipole(R, M, AQ):
+    cm = center_of_mass(R, M)
+    dipole = numpy.zeros(3)
+    for r,q in zip(R,AQ.getCharges()):
+        dipole += (r - cm)*q
+    return dipole
 
 def get_polarization_matrix(potential, **kwargs):
 

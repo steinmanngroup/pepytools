@@ -189,8 +189,8 @@ class Potential(object):
         return self._exclusion_list
 
     def setExclusionList(self, exclusion_list):
-        if self._debug:
-            print("DEBUG: ['{}'] Setting exclusion list with the following dimension: {} x {}".format(self._filename, len(exclusion_list.keys()), len(exclusion_list[0])))
+        #if self._debug:
+        #    #print("DEBUG: ['{}'] Setting exclusion list with the following dimension: {} x {}".format(self._filename, len(exclusion_list.keys()), len(exclusion_list[0])))
         self._exclusion_list = exclusion_list
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')

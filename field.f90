@@ -194,7 +194,12 @@ subroutine interaction_matrix( TT, nsites, nexclude, npols, coord, hasalpha, exc
             factor = 0.0d0
 
             if (damping) then
+                ! we will bail in the event that there are zero polarizabilites
+                if (alphas(i) .lt. 0.0001 .or. alphas(j) .lt. 0.0001) then
+                    cycle
+                endif
                 temp = (alphas(i)*alphas(j))**d6i
+
                 factor = damping_factor * Rij / temp
                 ! the screening is from appendix A in the mol. sim. paper
                 FE = 1.0d0 - (1.0d0 + factor + 0.5d0*factor**2)*exp(-factor)
