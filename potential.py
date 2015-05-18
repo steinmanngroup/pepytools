@@ -674,6 +674,8 @@ class Potential(object):
         self._multipoles[1] = numpy.array(M1)
         self.polarizabilities = P2[:]
 
+        return coordinates_to_remove
+
     def make_transition_potential(self):
         """ Sets the static part of the potential equal to zero
         """
