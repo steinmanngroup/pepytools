@@ -2,7 +2,7 @@ import sys
 import numpy
 import numpy.linalg
 
-from .constants import AATOBOHR
+from constants import AATOBOHR
 
 
 def read_coordinates(file):

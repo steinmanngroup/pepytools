@@ -1,7 +1,7 @@
 import numpy
 
-from .reader import read_potential
-from .constants import BOHRTOAA
+from reader import read_potential
+from constants import BOHRTOAA
 
 
 class Potential(object):
