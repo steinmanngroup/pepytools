@@ -1,14 +1,10 @@
 import numpy
-import numpy.linalg
-
-from fields import get_static_field
 
 
 class BaseSolver(object):
     """ Baseclass for solvers.
     """
-    def __init__(self, potential, **kwargs):
-        self.potential = potential
+    def __init__(self, **kwargs):
         self.verbose = kwargs.get('verbose', False)
 
     def Solve(self):
@@ -19,12 +15,11 @@ class BaseSolver(object):
 
 
 class IterativeSolver(BaseSolver):
-    """ Basic iterative solver using a simple forward power-iteration
-        approach to obtain the induced moments from a potential.
+    """ Basic iterative solver using a simple forward power-iteration approach
 
         Used together with a potential like:
 
-        pot = Potential.fromFile( 'mypotential.pot' )
+        pot = Potential.from_file( 'mypotential.pot' )
         solver = IterativeSolver( pot )
         muind = solver.Solve()
 
@@ -32,275 +27,151 @@ class IterativeSolver(BaseSolver):
             are evaluated during instantiation.
 
     """
-    def __init__(self, potential, max_iter=30, threshold=1.0e-7, **kwargs):
-        """ Create an IterativeSolver from a potential
+    def __init__(self, polmat, intmat, field, **kwargs):
+        super(IterativeSolver, self).__init__(**kwargs)
+        self.max_iterations = kwargs.get('max_iterations', 50)
+        self.threshold = kwargs.get('threshold', 1.0e-9)
 
-            Arguments:
-            potential -- the polarizable embedding (PE) potential to evaluate
-
-            Keyword arguments:
-            max_iter -- maximum number of iterations to use (Default 30)
-            threshold -- convergence threshold for subsequent induced moments (Default 1.0e-7)
-
-        """
-        super(IterativeSolver, self).__init__(potential, **kwargs)
-        self.max_iterations = max_iter
-        self.threshold = threshold
-
-        self.static_field = get_static_field(self.potential, **kwargs)
-        self.polarization_matrix = get_polarization_matrix(self.potential, **kwargs)
-        self.interaction_matrix = get_interaction_matrix(self.potential, **kwargs)
+        self.polarization_matrix = polmat
+        self.interaction_matrix = intmat
+        self.F = field
 
     def Solve(self):
-        """ Iteratively solves for the induced moments by evaluating the induced
-            moments from the total field and updating the total field from the
-            newly obtain induced moments.
+        """ Iteratively solves for the quantity S which can be obtained by
+            the following functional form
 
-            muind = A * ( F_static + F_ind )
-            F_ind = T * muind
+            >> S = A * (F_s + F_n)
+            >> F_n = T * S
 
-            where A is the polarization matrix and T is the interaction matrix
+            A is known as the polarization matrix and T is the interaction
+            matrix. F is the field or potential that through the polarization
+            matrix generates the property of interest, S.
         """
-        #muind = numpy.dot(self.polarization_matrix, self.static_field)
-        muind = self.polarization_matrix.dot( self.static_field )
+        if self.verbose:
+            print("{0:>6s}{1:>16s}{2:>16s}{3:>16s}".format("iter", "energy", "rms error", "max error"))
+        guess = self.polarization_matrix.dot(self.F)
 
         for k in range(1, self.max_iterations):
-            # obtain the field from induced dipoles and update total field
-            self.induced_field = numpy.dot(self.interaction_matrix, muind)
-            total_field = self.static_field + self.induced_field
+            F = self.F + self.interaction_matrix.dot(guess)
 
-            # Calculate updated induced dipoles based on the field
-            (muind_new, muind_diff) = self.Step(muind, total_field, k)
+            (guess, difference) = self.Step(guess, F, k)
 
-            # absolute error of updated induced dipoles
-            abs_err = numpy.sqrt(numpy.dot(muind_diff, muind_diff))
+            # error is RMS in the difference
+            rms_err = numpy.std(difference)
+            max_err = numpy.max(difference)
 
-            # extremely numpy-ish way of calculating the total induced dipole
-            n, = numpy.shape(muind)
-            muind_temp = numpy.reshape(muind, (n / 3, 3))
-            muind_tot = numpy.sum(muind_temp, axis=0)
-            D = numpy.sqrt(numpy.dot(muind_tot, muind_tot))
-
-            e_pol = -0.5 * numpy.dot(self.static_field, muind)
+            energy = -0.5 * self.F.dot(guess)
             if self.verbose:
-                print("iter = {0:3d}, energy = {1:12.8f}, err = {3:12.7f}, |D| = {2:9.5f}".format(k, e_pol, D, abs_err))
-            muind = muind_new[:]
-            if abs_err < self.threshold:
+                print("{0:6d}{1:16.8f}{2:16.8f}{3:16.8f}".format(k, energy, rms_err, max_err))
+
+            # according to:
+            #   Scalmani G et al. Theo. Chem. Account. 2004, (111), 90 - 100, DOI: 10.1007/s00214-003-0527-2
+            #
+            # we use a convergence threshold on both the RMS and MAX of the residual
+            if rms_err < self.threshold and max_err < self.threshold:
                 break
 
-        # unless we really want to save these two matrices, they
-        # are destroyed in order to conserve memory.
+        # destroy matrices to conserve memory
         self.polarization_matrix = None
         self.interaction_matrix = None
-        return muind
+        return guess
 
-    def Step(self, muind_old, total_field, k):
-        ''' Generate induced dipoles for the next step (i+1) using regular
-            forward power iteration, i.e.
-
-            dmu^(i+1) = A * (F_static + F_ind(mu^i))
-        '''
-        muind_new = numpy.dot(self.polarization_matrix, total_field)
-        muind_diff = muind_new - muind_old
-        return muind_new, muind_diff
+    def Step(self, old_guess, F, k):
+        new_guess = self.polarization_matrix.dot(F)
+        difference = new_guess - old_guess
+        return new_guess, difference
 
 
 class IterativeDIISSolver(IterativeSolver):
-    """ Iterative DIIS solver using a simple forward power-iteration
-        approach with DIIS accelleration to obtain the induced moments
-        from a potential.
+    """ Iterative solver with DIIS accelleration
 
         Used together with a potential like:
 
-        pot = Potential.fromFile( 'mypotential.pot' )
+        pot = Potential.from_file( 'mypotential.pot' )
         solver = IterativeDIISSolver( pot )
         muind = solver.Solve()
-
-        NB: The static field and other computationally expensive elements
-            are evaluated during instantiation.
-
     """
-    def __init__(self, potential, max_iter=30, threshold=1.0e-7, **kwargs):
-        """ Create an IterativeSolver from a potential
-
-            Arguments:
-            potential -- the polarizable embedding (PE) potential to evaluate
-
-            Keyword arguments:
-            max_iter -- maximum number of iterations to use (Default 30)
-            threshold -- convergence threshold for subsequent induced moments (Default 1.0e-7)
-
-        """
-        super(IterativeDIISSolver, self).__init__(potential, max_iter, threshold, **kwargs)
-
-        self.diis_start_from_niter = kwargs.get('diis_start_from_niter', 1)
+    def __init__(self, polmat, intmat, field, **kwargs):
+        super(IterativeDIISSolver, self).__init__(polmat, intmat, field, **kwargs)
+        self.diis_start_from_iter = kwargs.get('diis_start_from_iter', 1)
         self.diis_vector_threshold = kwargs.get('diis_vector_threshold', 1.0e-4)
+        self.diis_started = False
 
-        self.muind_storage = []
-        self.muind_diff_storage = []
+        self.guess_storage = []
+        self.diff_storage = []
 
-        self.started = False
+    def Step(self, old_guess, F, k):
+        new_guess = self.polarization_matrix.dot(F)
+        difference = new_guess - old_guess
 
-    def Step(self, muind_old, total_field, k):
-        ''' Generate a better guess at the induced dipoles using DIIS
+        if k >= self.diis_start_from_iter:
 
-            muind_old  :   old induced dipoles
-            total_field:   total field from static multipoles and old induced dipoles
-            k          :   current step
+            new_guess = self.diis_step(new_guess, difference)
 
-            we generate induced dipoles for the next step (i+1) using regular
-            forward power iteration, i.e.
+        return new_guess, difference
 
-            mu^(i+1) = A * (F_static + F_ind(mu^i))
+    def diis_step(self, guess, difference):
+        self.guess_storage.append(guess)
+        self.diff_storage.append(difference)
 
-            however, a better guess at the new dipoles can be obtained
-            by solving a set of linear equation of the error (difference)
+        new_guess = guess[:]
 
-            Bx = a
-
-            where elements of the matrix B, B_ij, is
-
-            B_ij = < dmu^(i) | dmu^(j) >,
-
-            where
-
-            dmu^(i) = mu^(i) - mu^(i-1)
-
-            and the last row and column having -1 for elements except for the
-            last element having a zero. x is a vector containing coefficients c_i
-            and a lambda and a is the solution vector which is equal to zero, except
-            for the last item which is -1.
-
-            solving this gives a set of coefficients c_i for which we can write the
-            induced dipoles at the next step as a linear combination of all the
-            previous ones, i.e.
-
-            u^(i+1) = \sum_i c_(i) * mu^(i)
-        '''
-        muind_new = numpy.dot(self.polarization_matrix, total_field)
-        muind_diff = muind_new - muind_old
-
-        # store the updated induced dipoles and differences
-        if k >= self.diis_start_from_niter:
-            if not self.started:
+        n = len(self.guess_storage)
+        if n > 1:
+            if not self.diis_started:
                 if self.verbose:
-                    print("  *** DIIS STARTED ***")
-                self.started = True
-            self.muind_storage.append(muind_new)
-            self.muind_diff_storage.append(muind_diff)
+                    print("{0:^60s}".format("--------- DIIS STARTED ---------"))
+                self.diis_started = True
 
-        if len(self.muind_diff_storage) > 1:
-            n = len(self.muind_diff_storage)
+            # right hand side of system of equations first
             rhs = numpy.zeros(n + 1)
             rhs[n] = -1
 
-            # setup system of linear equations
+            # prepare setup of system of linear equations
             B = numpy.zeros((n + 1, n + 1))
             B[:][n] = -1
             B = B.transpose()
             B[:][n] = -1
             B[n][n] = 0
 
-            for i, vi in enumerate(self.muind_diff_storage):
-                for j, vj in enumerate(self.muind_diff_storage):
-                    B[i, j] = numpy.dot(vi, vj)
+            # iterate over storage vectors and take inner product of
+            # differences
+            for i, idiff in enumerate(self.diff_storage):
+                for j, jdiff in enumerate(self.diff_storage):
+                    B[i, j] = idiff.dot(jdiff)
 
-            # solve the system of linear equations and return only the
-            # n elements we need
-            c = numpy.linalg.solve(B, rhs)[:n]
+            # solve the system of linear equations and only
+            # extract the n solutions we want
+            coeff = numpy.linalg.solve(B, rhs)[:n]
 
-            # make a new guess at the induced dipoles
-            muind_new = numpy.zeros(numpy.shape(muind_diff))
+            # now make a better guess at the solution by taking a
+            # linear combination of all the stored guesses so far
+            new_guess = numpy.zeros(numpy.shape(self.guess_storage[0]))
             for i in range(n):
-                muind_new += c[i] * self.muind_storage[i]
+                new_guess += coeff[i] * self.guess_storage[i]
 
-            # remove, if needed, items from the DIIS space
-            sel = list(numpy.where(numpy.abs(c) < self.diis_vector_threshold)[0])
-            sel.reverse()
-            for i in sel:
-                self.muind_storage.pop(i)
-                self.muind_diff_storage.pop(i)
+            # remove unwanted (non-contributing) solutions from the
+            # DIIS space
+            selection = list(numpy.where(numpy.abs(coeff) < self.diis_vector_threshold)[0])
+            selection.reverse()
+            for i in selection:
+                self.guess_storage.pop(i)
+                self.diff_storage.pop(i)
 
-        return muind_new, muind_diff
-
-
-def get_polarization_matrix(potential, **kwargs):
-
-    Aij = numpy.zeros((3 * potential.npols, 3 * potential.npols))
-    for isite in range(potential.nsites):
-        itensor = potential.hasalpha[isite]
-        if itensor == -1:
-            continue
-
-        tensor = numpy.zeros((3, 3))
-        tensor[0] = potential.polarizabilities[isite][0:3]
-        tensor[1][1:] = potential.polarizabilities[isite][3:5]
-        tensor[2][2:] = potential.polarizabilities[isite][5]
-        tensor[1][0] = tensor[0][1]
-        tensor[2][0] = tensor[0][2]
-        tensor[2][1] = tensor[1][2]
-
-        ii = 3 * itensor
-        jj = ii + 3
-
-        Aij[ii:jj][0][ii:jj] = tensor[0]
-        Aij[ii:jj][1][ii:jj] = tensor[1]
-        Aij[ii:jj][2][ii:jj] = tensor[2]
-
-    return Aij
-
-
-def get_interaction_matrix(potential, **kwargs):
-    verbose = kwargs.get('verbose', False)
-    TT = numpy.zeros((3 * potential.npols, 3 * potential.npols))
-    try:
-        from ffield import generate_tt
-        ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
-        q = numpy.array([q[0] for q in potential.multipoles[0]])
-        d = numpy.array([d for d in potential.multipoles[1]])
-        return generate_tt(potential.npols, potential.coordinates, potential.hasalpha, ex)
-    except:
-        if verbose:
-            print("INFO: interaction matrix calculated using (slow) python version.")
-        for isite in range(potential.nsites):
-            itensor = potential.hasalpha[isite]
-            is_polarizable_point = (itensor > -1)
-            Ri = potential.coordinates[isite]
-
-            if is_polarizable_point:
-                iexclusion_list = potential.exclusion_list[isite]
-
-                for jsite in range(potential.nsites):
-                    if jsite in iexclusion_list:
-                        continue
-
-                    if jsite == isite:
-                        continue
-
-                    jtensor = potential.hasalpha[jsite]
-                    js_polarizable_point = (jtensor > -1)
-                    Rj = potential.coordinates[jsite]
-
-                    if js_polarizable_point:
-                        Rij = Rj - Ri
-                        R = numpy.sqrt(numpy.dot(Rij, Rij))
-                        R1i = 1.0 / R
-                        R3i = R1i * R1i * R1i
-                        R5i = R3i * R1i * R1i
-                        for ii in range(3):
-                            for jj in range(3):
-                                iii = 3 * itensor + ii
-                                jjj = 3 * jtensor + jj
-                                TT[iii][jjj] = TT[iii][jjj] + 3.0 * Rij[ii] * Rij[jj] * R5i
-                                if ii == jj:
-                                    TT[iii][jjj] -= R3i
-
-        return TT
+        return new_guess
 
 if __name__ == '__main__':
     import sys
+
+    from fields import get_static_field
     from potential import Potential
+    from util import get_interaction_matrix, get_polarization_matrix
+
     filename = sys.argv[1]
-    potential = Potential(filename)
-    s = IterativeSolver(potential, verbose=True)
-    s.Solve()
+    p = Potential.from_file(filename)
+
+    polmat = get_polarization_matrix(p)
+    intmat = get_interaction_matrix(p)
+    field = get_static_field(p)
+    s = IterativeDIISSolver(polmat, intmat, field, **{'verbose': True, 'threshold': 1.0e-5})
+    result = s.Solve()

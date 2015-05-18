@@ -22,7 +22,7 @@ def read_coordinates(file):
             continue
 
         lines = lines - 1
-        coordinates.append(map(float, tokens[1:]))
+        coordinates.append(list(map(float, tokens[1:])))
         labels.append(tokens[0])
         read = (lines > 0)
     return factor * numpy.array(coordinates), labels
@@ -81,7 +81,7 @@ def read_exclusionlists(file):
             lines = int(tokens[0])
             continue
 
-        data = map(int, tokens)
+        data = list(map(int, tokens))
         exclusions[excl_counter] = numpy.array(data[1:]) - 1  # the first one is just the site, the rest are what they are not supposed to mix with. I guess.
         lines = lines - 1
         read = (lines > 0)

@@ -1,7 +1,3 @@
-from potential import Potential
-
-from solvers import IterativeSolver, IterativeDIISSolver
-
 __author__ = "Casper Steinmann"
 __copyright__ = "Copyright 2015, Casper Steinmann"
 __license__ = "BSD 2-clause"

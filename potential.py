@@ -5,9 +5,15 @@ from constants import BOHRTOAA
 
 
 class Potential(object):
-    """ Instantiated using a Polarizable Embedding (PE) potential file.
+    """ Representation of a polarizable embedding (PE) potential with
+        coordinates, multipole moments, polarizabilities and
+        exclusion lists.
 
-        pot = Potential.fromFile( "myfile.pot" )
+        Usually instantiated potential file
+        >> pot = Potential.from_file( "myfile.pot" )
+
+        The potential parameters can be accessed through its many
+        properties.
     """
 
     def __init__(self, **kwargs):
@@ -15,6 +21,9 @@ class Potential(object):
         """
         self._verbose = kwargs.get('verbose', False)
         self._debug = kwargs.get('debug', False)
+        if self._debug and not self._verbose:
+            self._verbose = True
+        self._isbohr = kwargs.get('bohr', False)
         pass
 
     @classmethod
@@ -31,7 +40,7 @@ class Potential(object):
         a.multipoles = m
         a.polarizabilities = p
         a.exclusion_list = e
-        hasalpha = numpy.array(a.hasalpha)
+        hasalpha = numpy.array(a.has_alpha)
         a.field = numpy.zeros( 3*len(hasalpha[numpy.where(hasalpha>-1)] ))
         return a
 
@@ -52,6 +61,7 @@ class Potential(object):
             >> d = [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], ...]
         """
         a = cls(**kwargs)
+        a._filename = 'untitled.pot'
 
         a.coordinates = numpy.array(coordinates)
 
@@ -63,17 +73,22 @@ class Potential(object):
              2: [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in coordinates]}
 
         # let's see if we have a 'list of stuff' or a dictionary
-        if type(multipoles) == type([]):
+        if type(multipoles) == type([]) or type(multipoles).__module__ == numpy.__name__:
             for i, value in enumerate(multipoles):
+
                 if type(value) == type([]) or type(value).__module__ == numpy.__name__:
 
-                    if len(value) > 3:
+                    # numpy.float64 can enter this block and applying "len" to it is void.
+                    if type(value) == numpy.float64:
+                        m[0][i] = [float(value)]
+
+                    elif len(value) > 3:
                         raise ValueError("Multipole moments larger than dipoles currently not supported.")
 
-                    if len(value) == 2:
+                    elif len(value) == 2:
                         raise ValueError("Multipole moments of length 2 is not understood")
 
-                    if len(value) == 1:
+                    elif len(value) == 1:
                         # add the monopole
                         m[0][i] = value
                     else:
@@ -163,7 +178,7 @@ class Potential(object):
         self._hasalpha = numpy.array([-1 for p in polarizabilities])
         itensor = 0
         for i, tensor in enumerate(polarizabilities):
-            if numpy.abs(numpy.max(tensor)) > 0.001:
+            if numpy.abs(numpy.max(list(tensor))) > 0.001:
                 self._hasalpha[i] = itensor
                 itensor += 1
         self._npols = itensor
@@ -174,26 +189,29 @@ class Potential(object):
         return self._exclusion_list
 
     def setExclusionList(self, exclusion_list):
-        if self._debug:
-            print("DEBUG: Setting exclusion list with the following dimension: {} x {}".format(len(exclusion_list.keys()), len(exclusion_list[0])))
+        #if self._debug:
+        #    #print("DEBUG: ['{}'] Setting exclusion list with the following dimension: {} x {}".format(self._filename, len(exclusion_list.keys()), len(exclusion_list[0])))
         self._exclusion_list = exclusion_list
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
 
-    def getNSites(self):
+    @property
+    def nsites(self):
+        """ The number of classical sites."""
         return self._nsites
 
-    nsites = property(getNSites, doc='Gets the number of classical sites.')
-
-    def getNPols(self):
+    @property
+    def npols(self):
+        """ The number of polarizable points."""
         return self._npols
 
-    npols = property(getNPols, doc='Gets the number of polarizable points.')
+    @property
+    def has_alpha(self):
+        """ list relating coordinate induces to polarizable points.
 
-    def getHasAlpha(self):
+            a value of -1 means that the point is not polarizable
+        """
         return self._hasalpha
-
-    hasalpha = property(getHasAlpha, doc='List relating coordinate indices to polarizable points.')
 
     def get_static_field(self):
         return self.field
@@ -202,7 +220,7 @@ class Potential(object):
         """ Sets the static field either from a file or from a calculation
         """
         nfield = len(field)
-        ff = self.hasalpha
+        ff = self.has_alpha
         nalpha = 3*len(ff[numpy.where(ff > -1)])
         nfieldm3 = nfield % 3 == 0
         if len(field) == 3*len(ff[numpy.where(ff > -1)]) and len(field) % 3 == 0:
@@ -224,12 +242,18 @@ class Potential(object):
     def __str__(self):
         """ Converts the potential to a string readable format
         """
-        sc = "@COORDINATES\n{0}\nAA\n".format(self.nsites)
+        units = 'AA'
+        factor = BOHRTOAA
+        if self._isbohr:
+            units = 'AU'
+            factor = 1.0
+
+        sc = "@COORDINATES\n{0}\n{1}\n".format(self.nsites, units)
         sm = ""
         sp = ""
         se = "\n"
         for label, coord in zip(self.labels, self.coordinates):
-            cc = coord * BOHRTOAA
+            cc = coord * factor
             sc += "{0:2s}{1:14.8f}{2:14.8f}{3:14.8f}\n".format(label, cc[0], cc[1], cc[2])
 
         if hasattr(self, '_multipoles'):
@@ -265,8 +289,8 @@ class Potential(object):
 
             >> p3 = p1 + p2
 
-            The strategy is to make an empty potential and copy over
-            everything from "self" and "other"
+            NB! There are not checks as to whether atoms
+                overlap or not.
         """
         p = Potential()
         p._verbose = self._verbose or other._verbose
@@ -353,61 +377,15 @@ class Potential(object):
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
 
-        try:
-            from intersect import intersect
-            nmax = max(len(sc), len(oc))
-            F,n = intersect(nmax, sc, oc)
-            satoms = list(F[:n,0])
-            oatoms = list(F[:n,1])
-        except:
+        from intersect import intersect
+        nmax = max(len(sc), len(oc))
+        F,n = intersect(nmax, sc, oc)
+        satoms = list(F[:n,0])
+        oatoms = list(F[:n,1])
 
-            eps = 1.0e-2
-            eps2 = eps*eps
-
-            # first pass is linear in time by comparing atoms directly as we loop over them
-            # to avoid expensive pairwise calculations. now the lists might not be equal
-            # in length so take the shorter one
-            nsites = slen
-            if slen > olen:
-                nsites = olen
-
-            for ic in range(nsites):
-                dr = sc[ic] - oc[ic]
-                R2 = dr.dot(dr)
-                if R2 < eps2:
-                    satoms.append(ic)
-                    oatoms.append(ic)
-
-            # single atoms could have been removed, so let's just try again with a spray of offsets
-            for ic in range(nsites):
-                if ic in satoms:
-                    continue
-
-                for offset in [-4, -3, -2, -1, 1, 2, 3, 4]:
-                    dr = sc[ic] - oc[ic+offset]
-                    R2 = dr.dot(dr)
-                    if R2 < eps2:
-                        satoms.append(ic)
-                        oatoms.append(ic+offset)
-                        break
-
-            # next loop is pairwise, looking for all the other ones. do not attempt to use any
-            # atoms already in the {s,o}atoms lists.
-            for ic in range(nsites):
-                if ic in satoms:
-                    continue
-
-                for jc in range(nsites):
-                    if jc in oatoms:
-                        continue
-
-                    dr = sc[ic] - oc[jc]
-                    R2 = dr.dot(dr)
-                    if R2 < eps2:
-                        satoms.append(ic)
-                        oatoms.append(jc)
-                        break
-        # end of try-statement
+        # bail out of there is nothing to see
+        if len(satoms) == 0 or len(oatoms) == 0:
+            return None
 
         # make inverted atom lists to save computation time
         # later on
@@ -419,7 +397,10 @@ class Potential(object):
         for i, value in enumerate(oatoms):
             smotao[value] = i
 
-        # transfer stuff
+        #print satoms, smotas
+        #print oatoms, smotao
+
+        # get ready to transfer stuff
         p = Potential()
         c = []
         l = []
@@ -437,22 +418,74 @@ class Potential(object):
         # correctly dotted later on to give properties.
         sfields_remove = range(slen)
         ofields_remove = range(olen)
-        for i, ic in enumerate(satoms):
+
+        # we need the final number if sites (atoms) in the
+        # potential to make a correct exclusionlist
+        natoms = len(satoms)
+        for i, (ic,oc) in enumerate(zip(satoms,oatoms)):
+            if ic == -1 or oc == -1:
+                print("WARNING: ic,oc =", ic, oc)
             c.append( self.coordinates[ic] )
             l.append( self.labels[ic] )
-            pol.append( self.polarizabilities[ic] )
 
+            # if ANY of the polarizabilites is zero, then we use
+            # that site since it means that that polarizable point
+            # was removed somehow
+            spol = self.polarizabilities[ic]
+            opol = other.polarizabilities[oc]
+            spolzero = numpy.max(numpy.abs( spol )) == 0.0
+            opolzero = numpy.max(numpy.abs( opol )) == 0.0
+            if spolzero == True or opolzero == True:
+                if spolzero:
+                    pol.append( self.polarizabilities[ic] )
+                elif opolzero:
+                    pol.append( other.polarizabilities[oc] )
+            else:
+                pol.append( self.polarizabilities[ic] )
+
+
+            #if i == 5488 and False:
+            #    print "----POL ----"
+            #    print i, ic, oc, key, diff
+            #    print self.coordinates[ic], other.coordinates[oc]
+            #    print self.polarizabilities[ic], other.polarizabilities[oc]
+
+            for key in self.multipoles:
+                if not m.has_key(key):
+                    m[key] = []
+
+                # check that multipole moments are the same
+                #
+                #
+                smult = numpy.array(self.multipoles[key][ic])
+                omult = numpy.array(other.multipoles[key][oc])
+                #if self.multipoles[key][ic] != 
+                diff = smult - omult
+                if numpy.max(numpy.abs(diff)) > 1.0e-8:
+                    print("WARNING: Multipole moments are not the same.")
+                #    print "--------"
+                #    print i, ic, oc, key, diff
+                #    print self.coordinates[ic], other.coordinates[oc]
+                m[key].append( self.multipoles[key][ic] )
+
+            # update the exclusion list to remove any points
+            # that are removed
             ex_unfixed = self.exclusion_list[ic]
-            ex_fixed = self.fix_exclusion_list( ex_unfixed, smotas )
+            #print "unfixed:", ex_unfixed
+            ex_fixed = self.fix_exclusion_list( ex_unfixed, smotas, natoms -1, i == 5488 )
+            #if i == 5488:
+            #    print "---- EXCL ----"
+            #    print "ic -> i", ic, i
+            #    print len(ex_unfixed), ex_unfixed
+            #    print len(ex_fixed), ex_fixed
+
+            #print "  fixed:", ex_fixed
             e[i] = numpy.array(ex_fixed[:])
 
+            # this takes care of electric field indexing for
+            # BOTH the self field and the other field
             sfields_remove[ic] = -1
             ofields_remove[ oatoms[i] ] = -1
-
-        for key in self.multipoles:
-            m[key] = []
-            for ic in satoms:
-                m[key] = list(numpy.zeros(numpy.shape(self._multipoles[key])))
 
         p.coordinates = numpy.array(c)
         p.labels = l
@@ -474,7 +507,7 @@ class Potential(object):
             if ii == -1:
                 continue
 
-            if ic == -1 and p.hasalpha[ii] != -1:
+            if ic == -1 and p.has_alpha[ii] != -1:
                 f1.append(f1o[ii])
 
         f2 = []
@@ -484,30 +517,103 @@ class Potential(object):
             if ii == -1:
                 continue
 
-            if ic == -1 and p.hasalpha[ii] != -1:
+            if ic == -1 and p.has_alpha[ii] != -1:
                 f2.append(f2o[ii])
 
         p.f1 = numpy.ravel(f1)
         p.f2 = numpy.ravel(f2)
         return p
 
-    def fix_exclusion_list( self, exlist, sdi ):
+    def __eq__(self, other):
+        """ checks of two potentials are equal (in the sense that
+            the atom coordinates and properties are equal)
+
+            NB! No check on the exclusion list is currently done
+        """
+
+        EPS = 1.0e-4
+
+        slen = self.nsites
+        olen = other.nsites
+        if slen != olen:
+            if self._verbose or other._verbose:
+                print("potentials are not of the same size.")
+            return False
+
+
+        # now we compare atom coordinates followed by potential properties
+        from intersect import intersect
+        sc = numpy.array(self.coordinates)
+        oc = numpy.array(other.coordinates)
+        nmax = max(len(sc), len(oc))
+        F,n = intersect(nmax, sc, oc)
+        satoms = list(F[:n,0])
+        oatoms = list(F[:n,1])
+
+        # see if coordinates are the same
+        for si, oi in zip(satoms, oatoms):
+            dr = sc[si] - oc[oi]
+            R2 = dr.dot(dr)
+            if R2 > EPS:
+                return False
+
+        # see if the other properties are also the same
+        sm = self.multipoles
+        om = other.multipoles
+        for key in sm.keys():
+            if not om.has_key(key):
+                return False
+
+        # multipole moments
+        for si, oi in zip(satoms, oatoms):
+            for key in sm.keys():
+                dv = sum([x-y for x,y in zip(sm[key][si], om[key][oi])])
+                if dv > EPS:
+                    if self._verbose or other._verbose:
+                        print("[{0:5d} <-> {1:5d}]".format(si, oi))
+                    return False
+
+        # polarizabilities
+
+        # exclusion lists
+
+        return True
+
+    def fix_exclusion_list( self, exlist, sdi, nmax, verbose=False ):
         """ corrects an exclusion list 'exlist' by converting and/or
             removing elements from an old index to a new
 
             Arguments
             exlist -- the exlcusion list
+            nmax -- the maximum size of the exclusion fixed
+                    exclusion list.
         """
-        new_list = [-1 for i in exlist]
+        # nmax cannot be zero
+        if nmax <= 0:
+            nmax = 1
+        nitems = len(exlist)
+        if nmax < nitems:
+            nitems = nmax
+        new_list = [-1 for i in range(nitems)]
         offset = 0
         for i, value in enumerate(exlist):
             if value == -1:
                 break
-            if sdi[value] == -1:
-                offset -= 1
-                continue
+            try:
+                if sdi[value] == -1:
+                    offset -= 1
+                    continue
+                new_list[i+offset] = sdi[value]
 
-            new_list[i+offset] = sdi[value]
+            # if an exception is raised, it means that the
+            # mapping will fail because the atoms cannot be found.
+            # a temporary solution is to make the atom not interact
+            # with anything
+            except IndexError as e:
+                #print("ERROR: {}".format(e))
+                new_list = [-1 for i in range(nitems)]
+                break
+
         return new_list
 
     def make_isotropic_polarizabilites(self):
@@ -533,7 +639,7 @@ class Potential(object):
 
         Cp = list(self.coordinates)
         nCp = range(len(Cp))
-        nCp.reverse()
+        nCp = reversed(nCp)
 
         coordinates_to_remove = []
 
@@ -550,6 +656,8 @@ class Potential(object):
         coordinates_to_remove.sort()
         if self._debug:
             print("Found {} points to remove".format(len(coordinates_to_remove)))
+            for ic in coordinates_to_remove:
+                print("atom {0} at {1:7.2f}{2:7.2f}{3:7.2f}".format(ic, self.coordinates[ic][0], self.coordinates[ic][1], self.coordinates[ic][2]))
 
         Ct = list(self.coordinates)
         Cl = list(self.labels)
@@ -566,6 +674,8 @@ class Potential(object):
         self._multipoles[1] = numpy.array(M1)
         self.polarizabilities = P2[:]
 
+        return coordinates_to_remove
+
     def make_transition_potential(self):
         """ Sets the static part of the potential equal to zero
         """
@@ -576,4 +686,4 @@ if __name__ == '__main__':
     import sys
     p1 = Potential.from_file(sys.argv[1])
 
-    print p1
+    print(p1)
