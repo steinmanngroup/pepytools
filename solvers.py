@@ -1,5 +1,6 @@
 import numpy
 
+
 class BaseSolver(object):
     """ Baseclass for solvers.
     """
@@ -11,6 +12,7 @@ class BaseSolver(object):
 
     def Step(self):
         raise NotImplementedError
+
 
 class IterativeSolver(BaseSolver):
     """ Basic iterative solver using a simple forward power-iteration approach
@@ -37,17 +39,17 @@ class IterativeSolver(BaseSolver):
     def Solve(self):
         """ Iteratively solves for the quantity S which can be obtained by
             the following functional form
-            
+
             >> S = A * (F_s + F_n)
             >> F_n = T * S
 
-            A is known as the polarization matrix and T is the interaction matrix.
-            F is the field or potential that through the polarization matrix
-            generates the property of interest, S.
+            A is known as the polarization matrix and T is the interaction
+            matrix. F is the field or potential that through the polarization
+            matrix generates the property of interest, S.
         """
         if self.verbose:
             print("{0:>6s}{1:>16s}{2:>16s}{3:>16s}".format("iter", "energy", "rms error", "max error"))
-        guess = self.polarization_matrix.dot( self.F )
+        guess = self.polarization_matrix.dot(self.F)
 
         for k in range(1, self.max_iterations):
             F = self.F + self.interaction_matrix.dot(guess)
@@ -79,7 +81,16 @@ class IterativeSolver(BaseSolver):
         difference = new_guess - old_guess
         return new_guess, difference
 
+
 class IterativeDIISSolver(IterativeSolver):
+    """ Iterative solver with DIIS accelleration
+
+        Used together with a potential like:
+
+        pot = Potential.from_file( 'mypotential.pot' )
+        solver = IterativeDIISSolver( pot )
+        muind = solver.Solve()
+    """
     def __init__(self, polmat, intmat, field, **kwargs):
         super(IterativeDIISSolver, self).__init__(polmat, intmat, field, **kwargs)
         self.diis_start_from_iter = kwargs.get('diis_start_from_iter', 1)

@@ -3,7 +3,8 @@
 """
 import numpy
 
-def get_static_field_from_file( potential, filename ):
+
+def get_static_field_from_file(potential, filename):
     f = open(filename, 'r')
     field = []
     for i, line in enumerate(f):
@@ -15,6 +16,7 @@ def get_static_field_from_file( potential, filename ):
     f.close()
 
     return numpy.ravel(field)
+
 
 def get_static_field(potential, **kwargs):
     """
@@ -46,23 +48,23 @@ def get_static_field(potential, **kwargs):
                 itensor = potential.has_alpha[isite]
                 is_polarizable_point = (itensor > -1)
                 Ri = potential.coordinates[isite]
-    
+
                 if is_polarizable_point:
                     iexclusion_list = potential.exclusion_list[isite]
-    
+
                     for jsite in range(potential.nsites):
                         if jsite == isite:
                             continue
-    
+
                         if jsite in iexclusion_list:
                             continue
-    
+
                         jtensor = potential.has_alpha[jsite]
                         js_polarizable_point = (jtensor > -1)
                         Rj = potential.coordinates[jsite]
                         Qj = potential.multipoles[0][jsite]
                         Pj = potential.multipoles[1][jsite]
-    
+
                         dRij = Rj - Ri
                         Rij = numpy.sqrt(numpy.dot(dRij, dRij))
                         R1i = 1.0 / Rij
