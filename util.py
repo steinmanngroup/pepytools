@@ -55,8 +55,6 @@ def get_interaction_matrix(potential, **kwargs):
 
     from field import interaction_matrix
     ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
-    q = numpy.array([q[0] for q in potential.multipoles[0]])
-    d = numpy.array([d for d in potential.multipoles[1]])
     a = []
     for aa in potential.polarizabilities:
         if numpy.sum(numpy.abs(aa)) > 0.0001:
