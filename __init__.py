@@ -13,6 +13,9 @@ Modules:
 - version: holds the current API version
 
 """
+import potential
+import solvers
+from . version import __version__
 
 __all__ = ['potential', 'solvers']
 __author__ = "Casper Steinmann"
@@ -22,7 +25,4 @@ __maintainer__ = "Casper Steinmann"
 __email__ = "casper.steinmann@gmail.com"
 __status__ = "Development"
 
-from . version import __version__
-import potential
-import solvers
 
