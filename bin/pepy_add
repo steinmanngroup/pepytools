@@ -3,9 +3,14 @@ import sys
 
 import pepylib
 
+if len(sys.argv) < 2:
+    print "Usage: pepy_add potential1 [potential2 ...]"
+    exit()
+
 p = pepylib.Potential.from_file(sys.argv[1])
 
-for _p in sys.argv[2:]:
+for _f in sys.argv[2:]:
+    _p = pepylib.Potential.from_file(_f)
     p = p + _p
 
 print p
