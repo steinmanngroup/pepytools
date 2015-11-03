@@ -171,7 +171,7 @@ if __name__ == '__main__':
     p = Potential.from_file(filename)
 
     polmat = get_polarization_matrix(p)
-    intmat = get_interaction_matrix(p)
+    intmat = get_interaction_matrix(p, induced_damping=True)
     field = get_static_field(p)
-    s = IterativeDIISSolver(polmat, intmat, field, **{'verbose': True, 'threshold': 1.0e-5})
+    s = IterativeDIISSolver(polmat, intmat, field, verbose = True, threshold = 1.0e-5)
     result = s.Solve()

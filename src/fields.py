@@ -37,8 +37,15 @@ def get_static_field(potential, **kwargs):
         try:
             from field import static_field
             ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
-            q = numpy.array([q[0] for q in potential.multipoles[0]])
-            d = numpy.array([d for d in potential.multipoles[1]])
+            q = numpy.zeros(potential.nsites)
+            d = numpy.zeros((potential.nsites,3))
+
+            multipoles = potential.multipoles
+            if multipoles.has_key(0):
+                q = numpy.array([q[0] for q in multipoles[0]])
+            if multipoles.has_key(1):
+                d = numpy.array([d for d in multipoles[1]])
+
             F_static = static_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
         except ImportError:
             if verbose:

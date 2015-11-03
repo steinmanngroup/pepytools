@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+import sys
+
+import pepylib
+
+p = pepylib.Potential.from_file(sys.argv[1])
+
+for _p in sys.argv[2:]:
+    p = p + _p
+
+print p
