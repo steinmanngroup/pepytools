@@ -24,10 +24,10 @@ def readme():
     with open('README.md') as f:
         return f.read()
 
-def setup_pepylib():
+def setup_pepytools():
 
     setup(
-          name="pepylib",
+          name="pepytools",
 
           # metadata
           version=__version__,
@@ -37,16 +37,16 @@ def setup_pepylib():
           platforms = 'Any',
           description = __description__,
           long_description = readme(),
-          keywords = 'polarizable embedding potentials',
+          keywords = 'polarizable embedding potential',
           url = __url__,
 
           # set up package contents
-          package_dir={'pepylib': 'src'},
-          packages=['pepylib'],
+          package_dir={'pepytools': 'src'},
+          packages=['pepytools'],
           scripts=['bin/pepy_add'],
-          ext_package = 'pepylib',
+          ext_package = 'pepytools',
           ext_modules = [ext_field, ext_intersect, ext_qmfields],
 )
 
 if __name__ == '__main__':
-    setup_pepylib()
+    setup_pepytools()

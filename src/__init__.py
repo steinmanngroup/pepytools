@@ -1,7 +1,7 @@
 """
-https://gitlab.com/cstein/pepylib
+https://gitlab.com/cstein/pepytools
 
-The Polarizable Embedding Python Library gives pythonic access
+The polarizable embedding python tools gives pythonic access
 to polarizable embedding potential files.
 
 Modules:
@@ -31,5 +31,5 @@ __license__ = "BSD 2-clause"
 __email__ = "casper.steinmann@gmail.com"
 __status__ = "Development"
 __description__ = "Pythonic access to polarizable embedding potentials"
-__url__ = 'https://gitlab.com/cstein/pepylib'
+__url__ = 'https://gitlab.com/cstein/pepytools'
 
