@@ -43,7 +43,7 @@ def setup_pepytools():
           # set up package contents
           package_dir={'pepytools': 'src'},
           packages=['pepytools'],
-          scripts=['bin/pepy_add'],
+          scripts=['bin/pepy_add', 'bin/pepy_to_csv'],
           ext_package = 'pepytools',
           ext_modules = [ext_field, ext_intersect, ext_qmfields],
 )
