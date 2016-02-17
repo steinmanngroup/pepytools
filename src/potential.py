@@ -276,10 +276,10 @@ class Potential(object):
 
             se = "EXCLISTS\n{0:d} {1:d}\n".format(self.nsites, len(self.exclusion_list[0]) + 1)
             for i in self.exclusion_list.keys():
-                se += "{0:>5d}".format(i + 1)
+                se += "{0:>6d}".format(i + 1)
                 excl = self.exclusion_list[i] + 1
                 for v in excl:
-                    se += "{0:5d}".format(v)
+                    se += "{0:6d}".format(v)
                 se += "\n"
 
         return sc + sm + sp + se[:-1]
