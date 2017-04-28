@@ -14,6 +14,9 @@ class Potential(object):
 
         The potential parameters can be accessed through its many
         properties.
+
+        Note: The internal format for the coordinates of the potential is
+              atomic units, i.e. Bohr.
     """
 
     def __init__(self, **kwargs):

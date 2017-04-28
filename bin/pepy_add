@@ -3,7 +3,7 @@ import sys
 
 from pepytools import Potential
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 1:
     print "Usage: pepy_add potential1 [potential2 ...]"
     exit()
 
