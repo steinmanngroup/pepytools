@@ -14,6 +14,9 @@ class Potential(object):
 
         The potential parameters can be accessed through its many
         properties.
+
+        Note: The internal format for the coordinates of the potential is
+              atomic units, i.e. Bohr.
     """
 
     def __init__(self, **kwargs):
@@ -308,10 +311,37 @@ class Potential(object):
 
         # multipoles are stored as a dictionary starting from 0,
         # here we just copy down everything
+
+        # the situation is slightly more complicated since we can potentially add m2p2 with
+        # and m0 potential.
         m = dict()
-        for key in self.multipoles:
-            m[key] = list(self.multipoles[key][:])
-            m[key].extend(other.multipoles[key][:])
+        l_max_self = max(self.multipoles.keys())
+        l_max_other = max(other.multipoles.keys())
+        l_max = max(l_max_self, l_max_other)
+
+        # create entries for all multipoles in self and zero-entries for others
+        for key in range(l_max+1):
+            m[key] = list()
+            if key in self.multipoles:
+                m[key].extend(self.multipoles[key][:])
+            else:
+                if key == 0:
+                    m[key].extend([0.0] for c in self.coordinates)
+                if key == 1:
+                    m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
+                if key == 2:
+                    m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
+
+            if key in other.multipoles:
+                m[key].extend(other.multipoles[key][:])
+            else:
+                if key == 0:
+                    m[key].extend([0.0] for c in other.coordinates)
+                if key == 1:
+                    m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
+                if key == 2:
+                    m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
+
         p.multipoles = m
 
         pol1 = self.polarizabilities[:]
