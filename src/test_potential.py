@@ -19,15 +19,18 @@ class TestPotentialModule(unittest.TestCase):
         pass
 
     def test_basic_properties(self):
+        """ Potential basic properties """
         self.assertEqual(self.p1.nsites, 1)
         self.assertEqual(self.p1.npols, 0)
 
     def test_add_potentials_no_polarization(self):
+        """ Potential addition without polarization """
         p3 = self.p1 + self.p2
         self.assertEqual(p3.nsites, 2)
         self.assertEqual(p3.npols, 0)
 
     def test_add_potentials_with_polarization(self):
+        """ Potential addition with polarization """
         alpha1 = [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
         alpha2 = [[0.0, 1.0, 0.0, 0.0, 0.0, 0.0]]
         self.p1.polarizabilities = alpha1
@@ -38,8 +41,7 @@ class TestPotentialModule(unittest.TestCase):
         self.assertEqual(p3.npols, 2)
 
     def test_add_potentials_with_polarization_mixed(self):
-        """ Adds a potential with polarization to a potential
-            without
+        """ Adds a potential with polarization to a potential without
         """
         alpha1 = [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
         self.p1.polarizabilities = alpha1
@@ -48,22 +50,31 @@ class TestPotentialModule(unittest.TestCase):
         self.assertEqual(p3.npols, 1)
         self.assertEqual(p3.nsites, 2)
 
-    def test_add_potentials_with_multipoles_mixed(self):
-        m2p2 = Potential.from_file('m2p2.pot')
-        m0 = Potential.from_file('m0.pot')
+        p4 = self.p2 + self.p1
+        self.assertEqual(p4.npols, 1)
+        self.assertEqual(p4.nsites, 2)
 
-        # check we can add both ways
-        p2 = m0 + m2p2
-        self.assertEqual(p2.nsites, 15)
-        self.assertEqual(len(p2.polarizabilities), 15)
-        self.assertEqual(max(p2.multipoles.keys()), 2)
+    def test_add_empty_potentials(self):
+        """ Potential addition with empty potential """
+        # first we test construction of empty potential
+        p = Potential()
+        self.assertEqual(p.labels, [])
+        self.assertEqual(p.nsites, 0)
+        self.assertEqual(p.npols, 0)
 
-        p1 = m2p2 + m0
-        self.assertEqual(p1.nsites, 15)
-        self.assertEqual(len(p1.polarizabilities), 15)
-        self.assertEqual(max(p1.multipoles.keys()), 2)
+        p2 = p + p # maybe we should just raise a value error instead?
+        self.assertEqual(p2.nsites, 0)
+        self.assertEqual(p2.npols, 0)
+
+    def test_add_potentials_with_only_polarization(self):
+        """ Potential addition with only polarization """
+        p = Potential.from_file('nomul.pot')
+        p2 = p + p
+        self.assertEqual(p2.nsites, 2)
+        self.assertEqual(p2.npols, 2)
 
     def test_basic_potential_from_file(self):
+        """ Load potential from file """
         self.assertEqual(self.pfile.nsites, 6)
         self.assertEqual(self.pfile.npols, 6)
 
