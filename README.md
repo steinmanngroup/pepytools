@@ -1,17 +1,15 @@
 # Polarizable Embedding Python Tools (pepytools)
 
-The polarizable embedding python tools (pepytools) is a [Python][] library designed to manipulate [polarizable embedding][] (PE) potentials for use in embedded QM/MM calculations in the [DALTON][] quantum chemistry code.
+The polarizable embedding python tools (pepytools) is a set of executables and a [Python][] API designed to manipulate [polarizable embedding][] (PE) potentials for use in embedded QM/MM calculations in the [DALTON][] quantum chemistry code.
 
 [Python]: http://www.python.org
 [polarizable embedding]: https://gitlab.com/pe-software/pelib-public
 [DALTON]: http://daltonprogram.org/
 
-The main class of the library, the `Potential` class, allows you to open potentials from files, add multiple potentials, construct potentials from multipole moments, polarizabilities and coordinates and write those potentials back to to a file for later use.
-
-The polarizable embedding potentials have the option of carrying anisotropic polarizabilities at the expansion points and this library also comes with solvers for induced moments.
+The potentials are typically made from a static charge distribution described by charges, dipoles and quadrupoles placed on atomic sites - for example the atoms of a water molecule - and by a classical, dynamic charge distribution described by (an)isotropic electric dipole-dipole polarizabilities - also placed on atomic sites.
 
 ## Example
-The most typical action one performs would be to add individual potentials.
+The most typical action to use pepytools is to add individual potentials.
 This is done either through the program supplied with pepytools called `pepy_add`
 
 ### shell
@@ -33,3 +31,6 @@ pot3 = pot1 + pot2
 
 print(pot3)
 ```
+The main class of the library, the `Potential` class, allows you to open potentials from files, add multiple potentials as shown above or even construct potentials from multipole moments, polarizabilities and coordinates and write those potentials back to to a file for later use in your QM/MM calculations.
+
+The polarizable embedding potentials also carry anisotropic polarizabilities at the expansion points and this library also comes with solvers for induced moments.

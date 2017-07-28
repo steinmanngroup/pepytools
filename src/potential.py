@@ -27,7 +27,14 @@ class Potential(object):
         if self._debug and not self._verbose:
             self._verbose = True
         self._isbohr = kwargs.get('bohr', False)
-        pass
+
+        # give default values to many properties
+        self._nsites = 0
+        self._npols = 0
+        self._hasalpha = []
+        self._labels = []
+        self._coordinates = None
+        self._exclusion_list = []
 
     @classmethod
     def from_file(cls, filename, **kwargs):
@@ -68,8 +75,7 @@ class Potential(object):
 
         a.coordinates = numpy.array(coordinates)
 
-        Cl = ['Z' for c in coordinates]
-        a.labels = Cl
+        a.labels = ['Z' for c in coordinates]
 
         m = {0: [[0.0] for c in coordinates],
              1: [[0.0, 0.0, 0.0] for c in coordinates],
@@ -136,6 +142,8 @@ class Potential(object):
             Arguments:
             coordinates -- the coordinates of the potential
         """
+        if coordinates is None:
+            return
         self._coordinates = coordinates
         self._nsites, n = numpy.shape(coordinates)
 
@@ -260,14 +268,16 @@ class Potential(object):
             sc += "{0:2s}{1:14.8f}{2:14.8f}{3:14.8f}\n".format(label, cc[0], cc[1], cc[2])
 
         if hasattr(self, '_multipoles'):
-            sm = "@MULTIPOLES\n"
-            for order in self.multipoles.keys():
-                sm += "ORDER {0}\n{1}\n".format(order, self.nsites)
-                for i, m in enumerate(self.multipoles[order]):
-                    sm += "{0:3d}".format(i + 1)
-                    for v in m:
-                        sm += "{0:14.8f}".format(v)
-                    sm += "\n"
+            sm = ""
+            if len(self.multipoles.keys()) > 0:
+                sm = "@MULTIPOLES\n"
+                for order in self.multipoles.keys():
+                    sm += "ORDER {0}\n{1}\n".format(order, self.nsites)
+                    for i, m in enumerate(self.multipoles[order]):
+                        sm += "{0:3d}".format(i + 1)
+                        for v in m:
+                            sm += "{0:14.8f}".format(v)
+                        sm += "\n"
 
         if hasattr(self, '_polarizabilities'):
             sp = "@POLARIZABILITIES\nORDER 1 1\n{0}\n".format(self.nsites)
@@ -299,6 +309,12 @@ class Potential(object):
         p._verbose = self._verbose or other._verbose
         p._debug = self._debug or other._debug
 
+        if other.coordinates is None:
+            return self
+
+        if self.coordinates is None:
+            return other
+
         c1 = list(self.coordinates)[:]
         c2 = list(other.coordinates)[:]
         c1.extend(c2)
@@ -315,32 +331,41 @@ class Potential(object):
         # the situation is slightly more complicated since we can potentially add m2p2 with
         # and m0 potential.
         m = dict()
-        l_max_self = max(self.multipoles.keys())
-        l_max_other = max(other.multipoles.keys())
+        try:
+            l_max_self = max(self.multipoles.keys())
+        except ValueError:
+            l_max_self = -1
+        try:
+            l_max_other = max(other.multipoles.keys())
+        except ValueError:
+            l_max_other = -1
         l_max = max(l_max_self, l_max_other)
 
         # create entries for all multipoles in self and zero-entries for others
-        for key in range(l_max+1):
-            m[key] = list()
-            if key in self.multipoles:
-                m[key].extend(self.multipoles[key][:])
-            else:
-                if key == 0:
-                    m[key].extend([0.0] for c in self.coordinates)
-                if key == 1:
-                    m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
-                if key == 2:
-                    m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
+        if l_max >= 0:
+            for key in range(l_max+1):
+                m[key] = list()
+                if key in self.multipoles:
+                    m[key].extend(self.multipoles[key][:])
+                else:
+                    if key == 0:
+                        m[key].extend([0.0] for c in self.coordinates)
+                    if key == 1:
+                        m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
+                    if key == 2:
+                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
 
-            if key in other.multipoles:
-                m[key].extend(other.multipoles[key][:])
-            else:
-                if key == 0:
-                    m[key].extend([0.0] for c in other.coordinates)
-                if key == 1:
-                    m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
-                if key == 2:
-                    m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
+                if key in other.multipoles:
+                    m[key].extend(other.multipoles[key][:])
+                else:
+                    if key == 0:
+                        m[key].extend([0.0] for c in other.coordinates)
+                    if key == 1:
+                        m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
+                    if key == 2:
+                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
+        else:
+            m = {}
 
         p.multipoles = m
 
@@ -690,7 +715,6 @@ class Potential(object):
                 print("atom {0} at {1:7.2f}{2:7.2f}{3:7.2f}".format(ic, self.coordinates[ic][0], self.coordinates[ic][1], self.coordinates[ic][2]))
 
         Ct = list(self.coordinates)
-        Cl = list(self.labels)
         M0 = list(self._multipoles[0])
         M1 = list(self._multipoles[1])
         P2 = list(self.polarizabilities)
