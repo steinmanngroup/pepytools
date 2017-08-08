@@ -107,6 +107,7 @@ def read_potential(filename):
     exclusion_list = None
     while len(line) > 0:
         line = f.readline()
+        print "line:", line
 
         for key in readers.keys():
             if key in line:
@@ -128,6 +129,10 @@ def read_potential(filename):
             except IndexError:
                 line = f.readline()
                 order_line = line.split()
+
+                # if the file has no polarizabilities it just ends here
+                if len(order_line) == 0:
+                    break
                 order = int(order_line[1])
             multipoles[order] = reader(f, order)
 

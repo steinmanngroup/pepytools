@@ -48,6 +48,15 @@ class Potential(object):
         a.coordinates = c
         a.labels = l
         a.multipoles = m
+
+        if p is None and e is None:
+            # make fake polarizabilites and exclusion lists if no polarizabilties are loaded
+            e = {}
+            for i, c in enumerate(a.coordinates):
+                e[i] = numpy.array([-1])
+
+            p = [[0.0 for t in range(6)] for c in a.coordinates]
+
         a.polarizabilities = p
         a.exclusion_list = e
         hasalpha = numpy.array(a.has_alpha)

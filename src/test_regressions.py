@@ -27,6 +27,12 @@ class TestRegressions(unittest.TestCase):
         self.assertEqual(len(p1.polarizabilities), 15)
         self.assertEqual(max(p1.multipoles.keys()), 2)
 
+    def test_nopol_potential_fails(self):
+        """ testing that potential without polarizibility correctly loads """
+        p = Potential.from_file('nopol.pot')
+        self.assertEqual(p.nsites, 3)
+        self.assertEqual(p.npols, 0)
+
 def suite():
     s = unittest.TestSuite()
     s.addTest(unittest.makeSuite(TestRegressions))
