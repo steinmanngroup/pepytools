@@ -78,6 +78,14 @@ class TestPotentialModule(unittest.TestCase):
         self.assertEqual(self.pfile.nsites, 6)
         self.assertEqual(self.pfile.npols, 6)
 
+    def test_potential_charge(self):
+        """ tests the total charge """
+        p = Potential.from_file('m0.pot')
+        self.assertEqual(p.charge, 0)
+
+        p = Potential.from_file('nomul.pot')
+        self.assertEqual(p.charge, 0)
+
 
 def suite():
     s = unittest.TestSuite()

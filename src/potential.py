@@ -207,6 +207,15 @@ class Potential(object):
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
 
     @property
+    def charge(self):
+        """ The charge of the embedding potential """
+        try:
+            q = numpy.array(self.multipoles[0])
+        except KeyError:
+            return 0.0
+        return numpy.sum(q)
+
+    @property
     def nsites(self):
         """ The number of classical sites."""
         return self._nsites
