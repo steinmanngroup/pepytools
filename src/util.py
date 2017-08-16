@@ -53,7 +53,7 @@ def get_interaction_matrix(potential, **kwargs):
     damping = kwargs.get('induced_damping', False)
     damping_factor = kwargs.get('induced_damping_factor', 2.1304)
 
-    from field import interaction_matrix
+    from ffields import interaction_matrix
     ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
     a = []
     for aa in potential.polarizabilities:

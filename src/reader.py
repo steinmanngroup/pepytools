@@ -107,7 +107,7 @@ def read_potential(filename):
     exclusion_list = None
     while len(line) > 0:
         line = f.readline()
-        print "line:", line
+        #print "line:", line
 
         for key in readers.keys():
             if key in line:
