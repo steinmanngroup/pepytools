@@ -90,7 +90,7 @@ def read_exclusionlists(file):
     return exclusions
 
 
-def read_potential(filename):
+def read_potential_from_file(filename):
     readers = {'COORD': read_coordinates,
                'MULT': read_multipoles,
                'POLAR': read_polarizabilites,

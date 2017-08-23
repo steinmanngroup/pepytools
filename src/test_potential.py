@@ -1,6 +1,16 @@
-from potential import Potential
+import os
 import unittest
 
+from potential import Potential
+
+def delete_file(filename):
+    try:
+        f = open(filename)
+    except IOError:
+        return
+    finally:
+        f.close()
+        os.remove(filename)
 
 class TestPotentialModule(unittest.TestCase):
 
@@ -86,6 +96,20 @@ class TestPotentialModule(unittest.TestCase):
         p = Potential.from_file('nomul.pot')
         self.assertEqual(p.charge, 0)
 
+    def test_potential_equal(self):
+        """ tests equality of potentials """
+        p = Potential.from_file('m0.pot')
+        self.assertEqual(p == p, True)
+
+    def test_printed_potential_match(self):
+        p = Potential.from_file('m2p2.pot')
+        with open('printed_potential.pot', 'w') as f:
+            f.write(str(p))
+        p2 = Potential.from_file('printed_potential.pot')
+        self.assertEqual(p == p2, True)
+        delete_file('printed_potential.pot')
+        
+        
 
 def suite():
     s = unittest.TestSuite()

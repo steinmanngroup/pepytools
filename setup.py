@@ -14,8 +14,8 @@ ext_field = Extension(name = 'ffields',
                       extra_link_args = ['-lgomp'],
                       f2py_options=['--quiet'])
 
-ext_intersect = Extension(name = 'intersect',
-                          sources = ['src/intersect.f90'],
+ext_intersect = Extension(name = 'fintersect',
+                          sources = ['src/fintersect.f90'],
                           language = FORTRAN,
                           f2py_options=['--quiet'])
 

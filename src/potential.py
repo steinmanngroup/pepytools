@@ -1,6 +1,6 @@
 import numpy
 
-from reader import read_potential
+from reader import read_potential_from_file
 from constants import BOHRTOAA
 
 
@@ -44,7 +44,7 @@ class Potential(object):
         """
         a = cls(**kwargs)
         a._filename = filename
-        (c, l, m, p, e) = read_potential(filename)
+        (c, l, m, p, e) = read_potential_from_file(filename)
         a.coordinates = c
         a.labels = l
         a.multipoles = m
@@ -450,7 +450,7 @@ class Potential(object):
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
 
-        from intersect import intersect
+        from pepytools.fintersect import intersect
         nmax = max(len(sc), len(oc))
         F,n = intersect(nmax, sc, oc)
         satoms = list(F[:n,0])
@@ -615,7 +615,7 @@ class Potential(object):
 
 
         # now we compare atom coordinates followed by potential properties
-        from intersect import intersect
+        from pepytools.fintersect import intersect
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
         nmax = max(len(sc), len(oc))
