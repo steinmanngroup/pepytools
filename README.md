@@ -8,6 +8,23 @@ The polarizable embedding python tools (pepytools) is a set of executables and a
 
 The potentials are typically made from a static charge distribution described by charges, dipoles and quadrupoles placed on atomic sites - for example the atoms of a water molecule - and by a classical, dynamic charge distribution described by (an)isotropic electric dipole-dipole polarizabilities - also placed on atomic sites.
 
+## Installing pepytools
+
+pepytools is a python library and installation is quite straight forward
+
+    python setup.py install
+
+to install it in the default locations. To install it in a custom location, you can run the following
+
+    python setup.py install --prefix=/path/to/custom/installation
+
+Remember to add the installation paths to your environment variables:
+
+    export PATH=/path/to/custom/installation/bin:$PATH
+    export PYTHONPATH=/path/to/custom/installation/lib/python2.7/site-packages:$PYTHONPATH
+
+shown here for a python 2.7 installation example.
+
 ## Example
 The most typical action to use pepytools is to add individual potentials.
 This is done either through the program supplied with pepytools called `pepy_add`
