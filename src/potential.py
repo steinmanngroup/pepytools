@@ -246,9 +246,8 @@ class Potential(object):
             Arguments:
             filename -- The filename to save to.
         """
-        f = open(filename, 'w')
-        f.write(str(self))
-        f.close()
+        with open(filename, 'w') as f:
+            f.write(str(self))
 
     def __str__(self):
         """ Converts the potential to a string readable format
