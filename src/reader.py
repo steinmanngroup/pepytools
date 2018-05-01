@@ -22,7 +22,7 @@ def read_coordinates(file):
             continue
 
         lines = lines - 1
-        coordinates.append(list(map(float, tokens[1:])))
+        coordinates.append(list(map(float, tokens[1:4])))
         labels.append(tokens[0])
         read = (lines > 0)
     return factor * numpy.array(coordinates), labels
