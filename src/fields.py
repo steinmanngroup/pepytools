@@ -12,7 +12,7 @@ def get_static_field_from_file(potential, filename):
         if i == 0:
             continue
         else:
-            field.append(map(float, d))
+            field.append(list(map(float, d)))
     f.close()
 
     return numpy.ravel(field)

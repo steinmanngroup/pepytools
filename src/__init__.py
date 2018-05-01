@@ -17,10 +17,10 @@ Classes:
   - IterativeDIISSolver: DIIS solver for induced moments
 
 """
-import solvers
-from solvers import IterativeDIISSolver
+from . import solvers
+from .solvers import IterativeDIISSolver
 
-from potential import Potential
+from .potential import Potential
 
 from . version import __version__
 
@@ -32,4 +32,3 @@ __email__ = "casper.steinmann@gmail.com"
 __status__ = "Development"
 __description__ = "Pythonic access to polarizable embedding potentials"
 __url__ = 'https://gitlab.com/cstein/pepytools'
-

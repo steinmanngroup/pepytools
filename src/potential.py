@@ -1,7 +1,7 @@
 import numpy
 
-from reader import read_potential
-from constants import BOHRTOAA
+from .reader import read_potential
+from .constants import BOHRTOAA
 
 
 class Potential(object):
@@ -431,7 +431,7 @@ class Potential(object):
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
 
-        from intersect import intersect
+        from .intersect import intersect
         nmax = max(len(sc), len(oc))
         F,n = intersect(nmax, sc, oc)
         satoms = list(F[:n,0])
@@ -513,7 +513,7 @@ class Potential(object):
                 #
                 smult = numpy.array(self.multipoles[key][ic])
                 omult = numpy.array(other.multipoles[key][oc])
-                #if self.multipoles[key][ic] != 
+                #if self.multipoles[key][ic] !=
                 diff = smult - omult
                 if numpy.max(numpy.abs(diff)) > 1.0e-8:
                     print("WARNING: Multipole moments are not the same.")
@@ -596,7 +596,7 @@ class Potential(object):
 
 
         # now we compare atom coordinates followed by potential properties
-        from intersect import intersect
+        from .intersect import intersect
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
         nmax = max(len(sc), len(oc))
@@ -615,7 +615,7 @@ class Potential(object):
         sm = self.multipoles
         om = other.multipoles
         for key in sm.keys():
-            if not om.has_key(key):
+            if not key in om:
                 return False
 
         # multipole moments

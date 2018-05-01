@@ -5,6 +5,7 @@ def test_m0_from_file():
     p = Potential.from_file('m0.pot')
     assert p.nsites == 9  # 3 water molecules
     assert p.npols == 0
+    print(p)
 
 def test_m2p2_from_file():
     p = Potential.from_file('m2p2.pot')
@@ -14,6 +15,7 @@ def test_m2p2_from_file():
 def test_equality():
     p1 = Potential.from_file('m0.pot')
     p2 = Potential.from_file('m0.pot')
+    print(p1, p2)
     assert p1 == p2
 
 def test_from_multipoles():
@@ -77,6 +79,7 @@ def test_addition():
 
     # finally add two potentials with only polarization
     p3 = Potential.from_file('nomul.pot')
+    print(p3)
     assert p3.npols == 1
     p = p3 + p3
     assert p.npols == 2
