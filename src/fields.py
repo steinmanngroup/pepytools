@@ -41,9 +41,9 @@ def get_static_field(potential, **kwargs):
             d = numpy.zeros((potential.nsites,3))
 
             multipoles = potential.multipoles
-            if multipoles.has_key(0):
+            if 0 in multipoles.keys():
                 q = numpy.array([q[0] for q in multipoles[0]])
-            if multipoles.has_key(1):
+            if 1 in multipoles.keys():
                 d = numpy.array([d for d in multipoles[1]])
 
             F_static = static_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)

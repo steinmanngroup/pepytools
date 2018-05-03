@@ -18,6 +18,18 @@ def test_equality():
     print(p1, p2)
     assert p1 == p2
 
+def test_from_multipoles_quad():
+    c1 = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+    q1 = [[1.0],[2.0]]
+    mu1 = [[1.0, 2.0, 3.0], [-1.0, -2.0, -3.0]]
+    theta1 = [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+              [-1.0, 2.0, -3.0, 4.0, -5.0, 6.0]]
+    p1 = Potential.from_multipoles( c1, [q1, mu1, theta1], max_k=2)
+    p1.save("quad_test.pot")
+
+    p2 = Potential.from_file("quad_test.pot")
+    assert p1 == p2
+
 def test_from_multipoles():
     c1 = [[0.0, 0.0, 0.0]]
     q1 = [[1.0]]

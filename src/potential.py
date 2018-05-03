@@ -55,11 +55,12 @@ class Potential(object):
         return a
 
     @classmethod
-    def from_multipoles(cls, coordinates, multipoles, **kwargs):
+    def from_multipoles(cls, coordinates, multipoles, max_k=None, **kwargs):
         """ Creates a potential from a set of coordinates and multipoles
             Arguments:
             coordinates -- the coordinates of the multipoles in Bohr.
             multipoles -- the multipoles to use at the specified coordinates.
+            max_k -- maximum order of multipoles, allows to create Potential from charges, dipoles, and quadrupoles at once
 
             the multipoles can either be a list of charges, such as
             >> q = [[1.0], [-1.0], ...]
@@ -85,14 +86,11 @@ class Potential(object):
         if type(multipoles) == type([]) or type(multipoles).__module__ == numpy.__name__:
             for i, value in enumerate(multipoles):
 
-                if type(value) == type([]) or type(value).__module__ == numpy.__name__:
+                if max_k is None and (type(value) == type([]) or type(value).__module__ == numpy.__name__):
 
                     # numpy.float64 can enter this block and applying "len" to it is void.
                     if type(value) == numpy.float64:
                         m[0][i] = [float(value)]
-
-                    elif len(value) > 3:
-                        raise ValueError("Multipole moments larger than dipoles currently not supported.")
 
                     elif len(value) == 2:
                         raise ValueError("Multipole moments of length 2 is not understood")
@@ -100,9 +98,24 @@ class Potential(object):
                     elif len(value) == 1:
                         # add the monopole
                         m[0][i] = value
-                    else:
-                        # add a dipole
+                    elif len(value) == 3:
+                        # add the dipole
                         m[1][i] = value
+                    elif len(value) == 6:
+                        # add the quadrupole
+                        m[2][i] = value
+
+                elif max_k is not None and type(value) == type([]):
+                    for idx, mul in enumerate(value):
+                        if len(mul) == 1:
+                            # add the monopole
+                            m[0][idx] = mul
+                        elif len(mul) == 3:
+                            # add the dipole
+                            m[1][idx] = mul
+                        elif len(mul) == 6:
+                            # add the quadrupole
+                            m[2][idx] = mul
 
                 elif type(value) == type(0.0):
                     m[0][i] = [value]
