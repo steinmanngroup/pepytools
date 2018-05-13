@@ -2,7 +2,7 @@ import sys
 import numpy
 import numpy.linalg
 
-from constants import AATOBOHR
+from .constants import AATOBOHR
 
 
 def read_coordinates(file):
@@ -22,7 +22,7 @@ def read_coordinates(file):
             continue
 
         lines = lines - 1
-        coordinates.append(list(map(float, tokens[1:])))
+        coordinates.append(list(map(float, tokens[1:4])))
         labels.append(tokens[0])
         read = (lines > 0)
     return factor * numpy.array(coordinates), labels
@@ -42,7 +42,7 @@ def read_polarizabilites(file):
             lines = int(tokens[0])
             continue
 
-        tensors.append(map(float, tokens[1:]))
+        tensors.append(list(map(float, tokens[1:])))
         lines = lines - 1
         read = (lines > 0)
     return tensors
@@ -60,7 +60,7 @@ def read_multipoles(file, order=0):
             lines = int(tokens[0])
             continue
 
-        data = map(float, tokens[1:])
+        data = list(map(float, tokens[1:]))
         multipoles.append(numpy.array(data))
         lines = lines - 1
         read = (lines > 0)
