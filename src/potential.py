@@ -20,7 +20,7 @@ class Potential(object):
     """
 
     def __init__(self, **kwargs):
-        """ Create a potential without content
+        """ Create an empty potential without content
         """
         self._verbose = kwargs.get('verbose', False)
         self._debug = kwargs.get('debug', False)
@@ -128,8 +128,10 @@ class Potential(object):
         return a
 
     def getCoordinates(self):
-        """ Returns a nsites x 3 array with the coordinates of all
-            sites in the potential.
+        """ Returns a nsites x 3 array with the coordinates of all sites in the potential
+
+            Returns:
+            coordinates in atomic units
         """
         return self._coordinates
 
@@ -138,6 +140,8 @@ class Potential(object):
 
             NB: The coordinates does also include coordinates of non-atomic
                 sites such as polarizable sites.
+
+            Note: The coordinates must be given in atomic units
 
             Arguments:
             coordinates -- the coordinates of the potential
@@ -200,8 +204,6 @@ class Potential(object):
         return self._exclusion_list
 
     def setExclusionList(self, exclusion_list):
-        #if self._debug:
-        #    #print("DEBUG: ['{}'] Setting exclusion list with the following dimension: {} x {}".format(self._filename, len(exclusion_list.keys()), len(exclusion_list[0])))
         self._exclusion_list = exclusion_list
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
