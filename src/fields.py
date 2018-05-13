@@ -12,7 +12,7 @@ def get_static_field_from_file(potential, filename):
         if i == 0:
             continue
         else:
-            field.append(map(float, d))
+            field.append(list(map(float, d)))
     f.close()
 
     return numpy.ravel(field)
@@ -35,15 +35,15 @@ def get_static_field(potential, **kwargs):
     else:
 
         try:
-            from field import static_field
+            from .field import static_field
             ex = numpy.array([potential.exclusion_list[k] for k in range(len(potential.exclusion_list))])
             q = numpy.zeros(potential.nsites)
             d = numpy.zeros((potential.nsites,3))
 
             multipoles = potential.multipoles
-            if multipoles.has_key(0):
+            if 0 in multipoles.keys():
                 q = numpy.array([q[0] for q in multipoles[0]])
-            if multipoles.has_key(1):
+            if 1 in multipoles.keys():
                 d = numpy.array([d for d in multipoles[1]])
 
             F_static = static_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
