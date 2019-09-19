@@ -344,82 +344,86 @@ class Potential(object):
 
         # the situation is slightly more complicated since we can potentially add m2p2 with
         # and m0 potential.
-        m = dict()
-        try:
-            l_max_self = max(self.multipoles.keys())
-        except ValueError:
-            l_max_self = -1
-        try:
-            l_max_other = max(other.multipoles.keys())
-        except ValueError:
-            l_max_other = -1
-        l_max = max(l_max_self, l_max_other)
+        if hasattr(self, '_multipoles'):
+            m = dict()
+            try:
+                l_max_self = max(self.multipoles.keys())
+            except ValueError:
+                l_max_self = -1
 
-        # create entries for all multipoles in self and zero-entries for others
-        if l_max >= 0:
-            for key in range(l_max+1):
-                m[key] = list()
-                if key in self.multipoles:
-                    m[key].extend(self.multipoles[key][:])
-                else:
-                    if key == 0:
-                        m[key].extend([0.0] for c in self.coordinates)
-                    if key == 1:
-                        m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
-                    if key == 2:
-                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
+            try:
+                l_max_other = max(other.multipoles.keys())
+            except ValueError:
+                l_max_other = -1
 
-                if key in other.multipoles:
-                    m[key].extend(other.multipoles[key][:])
-                else:
-                    if key == 0:
-                        m[key].extend([0.0] for c in other.coordinates)
-                    if key == 1:
-                        m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
-                    if key == 2:
-                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
-        else:
-            m = {}
+            l_max = max(l_max_self, l_max_other)
 
-        p.multipoles = m
+            # create entries for all multipoles in self and zero-entries for others
+            if l_max >= 0:
+                for key in range(l_max+1):
+                    m[key] = list()
+                    if key in self.multipoles:
+                        m[key].extend(self.multipoles[key][:])
+                    else:
+                        if key == 0:
+                            m[key].extend([0.0] for c in self.coordinates)
+                        if key == 1:
+                            m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
+                        if key == 2:
+                            m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
 
-        pol1 = self.polarizabilities[:]
-        pol2 = other.polarizabilities[:]
-        pol1.extend(pol2)
-        p.polarizabilities = pol1[:]
+                    if key in other.multipoles:
+                        m[key].extend(other.multipoles[key][:])
+                    else:
+                        if key == 0:
+                            m[key].extend([0.0] for c in other.coordinates)
+                        if key == 1:
+                            m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
+                        if key == 2:
+                            m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
+            else:
+                m = {}
+            p.multipoles = m
 
-        # exclusionlists have to be updated so that the id's in the
-        # list reflect correct atoms. Offset items in the "other" by
-        # the number of polarizable sites. Items with a "-1" should
-        # not be updated
-        n1 = self.nsites
-        n2 = other.nsites
-        e1 = self.exclusion_list.copy()
-        e2 = other.exclusion_list.copy()
-
-        # find out which one has the more items per key
-        ne1 = len(e1[0])
-        ne2 = len(e2[0])
-
-        # if e2 has the more items, update elements in e1
-        # with the proper length
-        if (ne2 > ne1):
-            for k in e1.keys():
+        if hasattr(self, '_polarizabilities'):
+            # polarizabilities 
+            pol1 = self.polarizabilities[:]
+            pol2 = other.polarizabilities[:]
+            pol1.extend(pol2)
+            p.polarizabilities = pol1[:]
+    
+            # exclusionlists have to be updated so that the id's in the
+            # list reflect correct atoms. Offset items in the "other" by
+            # the number of polarizable sites. Items with a "-1" should
+            # not be updated
+            n1 = self.nsites
+            n2 = other.nsites
+            e1 = self.exclusion_list.copy()
+            e2 = other.exclusion_list.copy()
+    
+            # find out which one has the more items per key
+            ne1 = len(e1[0])
+            ne2 = len(e2[0])
+    
+            # if e2 has the more items, update elements in e1
+            # with the proper length
+            if (ne2 > ne1):
+                for k in e1.keys():
+                    items = -1 * numpy.ones(ne2, dtype=int)
+                    items[:ne1] = e1[k]
+                    e1[k] = items
+    
+            # append e2 to e1
+            for k in e2.keys():
                 items = -1 * numpy.ones(ne2, dtype=int)
-                items[:ne1] = e1[k]
-                e1[k] = items
-
-        # append e2 to e1
-        for k in e2.keys():
-            items = -1 * numpy.ones(ne2, dtype=int)
-            if (ne1 > ne2):
-                items = -1 * numpy.ones(ne1, dtype=int)
-            items[:ne2] = e2[k]
-            selection = numpy.where(items != -1)
-            items[selection] += n1
-            e1[k + n1] = items
-
-        p.exclusion_list = e1
+                if (ne1 > ne2):
+                    items = -1 * numpy.ones(ne1, dtype=int)
+                items[:ne2] = e2[k]
+                selection = numpy.where(items != -1)
+                items[selection] += n1
+                e1[k + n1] = items
+    
+            p.exclusion_list = e1
         return p
 
     def __and__(self, other):
