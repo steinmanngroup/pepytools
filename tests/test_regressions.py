@@ -5,8 +5,8 @@ import numpy
 from pepytools import Potential
 
 def test_commutative_addition():
-    m2p2 = Potential.from_file('m2p2.pot')
-    m0 = Potential.from_file('m0.pot')
+    m2p2 = Potential.from_file('tests/m2p2.pot')
+    m0 = Potential.from_file('tests/m0.pot')
 
     # check we can add both ways
     p2 = m0 + m2p2

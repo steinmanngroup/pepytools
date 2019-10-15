@@ -1,7 +1,7 @@
 import numpy
 
-from .reader import read_potential
-from .constants import BOHRTOAA
+from pepytools.reader import read_potential
+from pepytools.constants import BOHRTOAA
 
 
 class Potential(object):
@@ -450,7 +450,7 @@ class Potential(object):
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
 
-        from .intersect import intersect
+        from pepytools.intersect import intersect
         nmax = max(len(sc), len(oc))
         F,n = intersect(nmax, sc, oc)
         satoms = list(F[:n,0])
@@ -615,7 +615,7 @@ class Potential(object):
 
 
         # now we compare atom coordinates followed by potential properties
-        from .intersect import intersect
+        from pepytools.intersect import intersect
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
         nmax = max(len(sc), len(oc))

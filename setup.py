@@ -2,21 +2,21 @@ import sys
 #from distutils.core import setup
 from numpy.distutils.core import Extension, setup
 
-from src import __version__, __license__, __author__, __copyright__, __email__, __description__, __url__
+from pepytools import __version__, __license__, __author__, __copyright__, __email__, __description__, __url__
 
 # setup fortran extensions
 ext_field = Extension(name = 'field',
-                      sources = ['src/field.f90'],
+                      sources = ['pepytools/field.f90'],
                       language = 'fortran',
                       extra_f90_compile_args = ['-fopenmp'],
                       extra_link_args = ['-lgomp'])
 
 ext_intersect = Extension(name = 'intersect',
-                          sources = ['src/intersect.f90'],
+                          sources = ['pepytools/intersect.f90'],
                           language = 'fortran')
 
 ext_qmfields = Extension(name = 'qm_fields',
-                         sources = ['src/qm_fields.f90'],
+                         sources = ['pepytools/qm_fields.f90'],
                          language = 'fortran')
 
 # use README.md as long description
@@ -41,7 +41,7 @@ def setup_pepytools():
           url = __url__,
 
           # set up package contents
-          package_dir={'pepytools': 'src'},
+          package_dir={'pepytools': 'pepytools'},
           packages=['pepytools'],
           scripts=['bin/pepy_add'],
           ext_package = 'pepytools',
