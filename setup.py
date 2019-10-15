@@ -5,8 +5,8 @@ from numpy.distutils.core import Extension, setup
 from pepytools import __version__, __license__, __author__, __copyright__, __email__, __description__, __url__
 
 # setup fortran extensions
-ext_field = Extension(name = 'field',
-                      sources = ['pepytools/field.f90'],
+ext_field = Extension(name = 'ffield',
+                      sources = ['pepytools/ffield.f90'],
                       language = 'fortran',
                       extra_f90_compile_args = ['-fopenmp'],
                       extra_link_args = ['-lgomp'])

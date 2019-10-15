@@ -200,7 +200,7 @@ class Potential(object):
                   value of the maximum element is larger than zero.
         """
         if len(polarizabilities) != self.nsites:
-            raise ValueError("Number of polarizabilities must match number of sites.")
+            raise ValueError("Number of polarizabilities ({}) must match number of sites ({}).".format(len(polarizabilities), self.nsites))
 
         self._polarizabilities = polarizabilities
         self._hasalpha = numpy.array([-1 for p in polarizabilities])
