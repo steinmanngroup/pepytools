@@ -2,8 +2,8 @@
     dipoles at polarizable points.
 """
 import numpy
-from tensor import T
-from mulmom import MulMom as M
+from .tensor import T
+from .mulmom import MulMom as M
 
 def get_static_field_from_file(potential, filename):
     f = open(filename, 'r')
@@ -48,7 +48,7 @@ def get_static_field(potential, **kwargs):
                 d = numpy.array([d for d in multipoles[1]])
 
             F_static = static_field(potential.npols, potential.coordinates, potential.has_alpha, ex, q, d)
-        except ImportError:
+        except ModuleNotFoundError:
             if verbose:
                 print("INFO: static field calculated using (slow) python version.")
             offset = 0
@@ -74,7 +74,7 @@ def get_static_field(potential, **kwargs):
 
                         T1 = T(1, dRij)
                         try:
-                            M0 = M(potential.multipoles[0][jsite])
+                            M0 = M(*potential.multipoles[0][jsite])
                         except KeyError:
                             F0 = numpy.zeros(3)
                         else:

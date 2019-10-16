@@ -1,8 +1,8 @@
 import math
-import unittest
+import pytest
 import numpy
 
-from mulmom import MulMom
+from .mulmom import MulMom
 
 class T(list):
     """ Implements an interaction tensor T according Stones
@@ -29,10 +29,10 @@ class T(list):
             raise ValueError("Keyword Argument 'verbose' has wrong type.")
 
         self.order = order
-        tensor_sizes = {0: 1, 1: 3, 2: 6, 3: 10}
+        tensor_sizes = {0: 1, 1: 3, 2: 6, 3: 10, 4: 15}
         if order < 0:
             raise ValueError("negative order not supported")
-        if order > 3:
+        if order > 5:
             raise NotImplementedError("order {} not implemented for interaction tensor".format(order))
 
         list.__init__(self, [0.0]*tensor_sizes[order])
@@ -85,6 +85,26 @@ class T(list):
             self[8] = -(15*y*z*z - 3*r*r * y) / R7          # yzz
             self[9] = -(15*z*z*z - 3*r*r * (z + z + z))/ R7 # zzz
             self._np = None
+        elif order == 4:
+            # eq 3.1.8
+            R9 = r**9
+            R2 = r**2
+            R4 = R2 * R2
+            self[ 0] = (105 *x*x*x*x - 15* R2 * (x*x + x*x + x*x + x*x + x*x + x*x) + 3* R4 * (1 + 1 + 1)) / R9  # xxxx
+            self[ 1] = (105 *x*x*x*y - 15* R2 * (  0 +   0 + x*y +   0 + x*y + x*y) + 3* R4 * (0 + 0 + 0)) / R9  # xxxy
+            self[ 2] = (105 *x*x*x*z - 15* R2 * (  0 +   0 + x*z +   0 + x*z + x*z) + 3* R4 * (0 + 0 + 0)) / R9  # xxxz
+            self[ 3] = (105 *x*x*y*y - 15* R2 * (x*x +   0 +   0 +   0 +   0 + y*y) + 3* R4 * (1 + 0 + 0)) / R9  # xxyy
+            self[ 4] = (105 *x*x*y*z - 15* R2 * (  0 +   0 +   0 +   0 +   0 + y*z) + 3* R4 * (0 + 0 + 0)) / R9  # xxyz
+            self[ 5] = (105 *x*x*z*z - 15* R2 * (x*x +   0 +   0 +   0 +   0 + z*z) + 3* R4 * (1 + 0 + 0)) / R9  # xxzz
+            self[ 6] = (105 *x*y*y*y - 15* R2 * (x*y + x*y + x*y +   0 +   0 +   0) + 3* R4 * (0 + 0 + 0)) / R9  # xyyy
+            self[ 7] = (105 *x*y*y*z - 15* R2 * (  0 +   0 + x*z +   0 +   0 +   0) + 3* R4 * (0 + 0 + 0)) / R9  # xyyz
+            self[ 8] = (105 *x*y*z*z - 15* R2 * (x*y +   0 +   0 +   0 +   0 +   0) + 3* R4 * (0 + 0 + 0)) / R9  # xyzz
+            self[ 9] = (105 *x*z*z*z - 15* R2 * (x*z + x*z + x*z +   0 +   0 +   0) + 3* R4 * (0 + 0 + 0)) / R9  # xzzz
+            self[10] = (105 *y*y*y*y - 15* R2 * (y*y + y*y + y*y + y*y + y*y + y*y) + 3* R4 * (1 + 1 + 1)) / R9  # yyyy
+            self[11] = (105 *y*y*y*z - 15* R2 * (  0 +   0 + y*z +   0 + y*z + y*z) + 3* R4 * (0 + 0 + 0)) / R9  # yyyz
+            self[12] = (105 *y*y*z*z - 15* R2 * (y*y +   0 +   0 +   0 +   0 + z*z) + 3* R4 * (1 + 0 + 0)) / R9  # yyzz
+            self[13] = (105 *y*z*z*z - 15* R2 * (y*z + y*z + y*z +   0 +   0 +   0) + 3* R4 * (0 + 0 + 0)) / R9  # yzzz
+            self[14] = (105 *z*z*z*z - 15* R2 * (z*z + z*z + z*z + z*z + z*z + z*z) + 3* R4 * (1 + 1 + 1)) / R9  # zzzz
         else:
             raise NotImplementedError
 
@@ -109,8 +129,12 @@ class T(list):
             # electric field of charge
             if self.order == 1 and other.order == 0:
                 result = [0.0, 0.0, 0.0]
-                for i in range(3):
-                    result[i] = self[i] * other[0]
+                try:
+                    for i in range(3):
+                        result[i] = self[i] * other[0]
+                except TypeError:
+                    print("other:", other[0], " type:", type(other[0]))
+                    print("self :", self[i], " type: ", type(self[i]))
                 return MulMom(*result)
 
             # electric field gradient of charge
@@ -194,50 +218,72 @@ class T(list):
     #    raise TypeError("multiplication of T-tensor with {0:s} not implemented.".format(type(other)))
 
 
-class TestInteractionTensor(unittest.TestCase):
-    def setUp(self):
-        import random
+@pytest.fixture
+def setup_vectors():
+    import random
 
-        R = [0.0, 0.0, 2.0]
-        randR = [random.random()]*3
-        r = math.sqrt(R[0]*R[0] + R[1]*R[1] + R[2]*R[2])
-        self.R = R
-        self.randR = randR
-        self.r = r
+    R = [0.0, 0.0, 2.0]
+    randR = [(random.random()-1) for i in range(3)]
+    r = math.sqrt(R[0]*R[0] + R[1]*R[1] + R[2]*R[2])
+    return R, randR, r
 
-    def test_order0(self):
-        """ tests correct scaling of order 0 """
-        tensor = T(0, self.R)
-        self.assertAlmostEqual(tensor[0], 1.0/self.r)
 
-    def test_order1(self):
-        """ tests correct scaling of order 1 """
-        tensor = T(1, self.R)
-        self.assertAlmostEqual(tensor[2], -1.0 / self.r**2)
+def test_order0():
+    """ tests correct scaling of order 0 """
+    R, _, r = setup_vectors()
+    tensor = T(0, R)
+    assert 1.0/r == pytest.approx(tensor[0])
 
-    def test_order2(self):
-        """ tests tracelessness of order 2 interaction tensor
 
-            The condition that an interaction tensor is traceless
-            i.e sum_alpha T_{alpha,alpha} = 0 should be True
-            for all input vectors.
-        """
-        tensor = T(2, self.randR)
-        self.assertAlmostEqual(tensor[0]+tensor[3]+tensor[5], 0.0)
+def test_order1():
+    """ tests correct scaling of order 1 """
+    R, _, r = setup_vectors()
+    tensor = T(1, R)
+    assert -1.0/r**2 == pytest.approx(tensor[2])
 
-    def test_order3(self):
-        """ tests tracelessness of order 3 interaction tensor
 
-            The condition that an interaction tensor is traceless
-            i.e sum_alpha T_{alpha,alpha,...} = 0 should be True
-            for all input vectors.
-        """
-        tensor = T(3, self.randR)
-        # tracelessness of interaction tensor is defined on
-        # pp 45 in Stones' Theory of Intermolecular Forces (2nd ed)
-        self.assertAlmostEqual(tensor[0]+tensor[3]+tensor[5], 0.0)
-        self.assertAlmostEqual(tensor[1]+tensor[6]+tensor[8], 0.0)
-        self.assertAlmostEqual(tensor[2]+tensor[7]+tensor[9], 0.0)
+def test_order2():
+    """ tests tracelessness of order 2 interaction tensor
+
+        The condition that an interaction tensor is traceless
+        i.e sum_alpha T_{alpha,alpha} = 0 should be True
+        for all input vectors.
+    """
+    _, randR, _ = setup_vectors()
+    tensor = T(2, randR)
+    assert 0.0 == pytest.approx(tensor[0] + tensor[3] + tensor[5])
+
+
+def test_order3():
+    """ tests tracelessness of order 3 interaction tensor
+
+        The condition that an interaction tensor is traceless
+        i.e sum_alpha T_{alpha,alpha,...} = 0 should be True
+        for all input vectors.
+    """
+    _, randR, _ = setup_vectors()
+    tensor = T(3, randR)
+    # tracelessness of interaction tensor is defined on
+    # pp 45 in Stones' Theory of Intermolecular Forces (2nd ed)
+    trace_indices = [0, 1, 2, 3, 5, 6, 7, 8, 9]
+    assert 0.0 == pytest.approx( sum( [tensor[i] for i in trace_indices] ) )
+
+
+def test_order4():
+    """ tests tracelessness of order 3 interaction tensor
+
+        The condition that an interaction tensor is traceless
+        i.e sum_alpha T_{alpha,alpha,...} = 0 should be True
+        for all input vectors.
+    """
+    _, randR, _ = setup_vectors()
+    tensor = T(4, randR)
+    # tracelessness of interaction tensor is defined on
+    # pp 45 in Stones' Theory of Intermolecular Forces (2nd ed)
+    trace_indices = list(range(15))  + [3, 5, 12]
+    for i in trace_indices:
+        print(i, tensor[i])
+    assert 0.0 == pytest.approx( sum( [tensor[i] for i in trace_indices] ) )
 
 
 if __name__ == '__main__':
