@@ -1,7 +1,7 @@
 import numpy
 
-from reader import read_potential_from_file
-from constants import BOHRTOAA
+from pepytools.reader import read_potential
+from pepytools.constants import BOHRTOAA
 
 
 class Potential(object):
@@ -20,7 +20,7 @@ class Potential(object):
     """
 
     def __init__(self, **kwargs):
-        """ Create a potential without content
+        """ Create an empty potential without content
         """
         self._verbose = kwargs.get('verbose', False)
         self._debug = kwargs.get('debug', False)
@@ -64,11 +64,12 @@ class Potential(object):
         return a
 
     @classmethod
-    def from_multipoles(cls, coordinates, multipoles, **kwargs):
+    def from_multipoles(cls, coordinates, multipoles, max_k=None, **kwargs):
         """ Creates a potential from a set of coordinates and multipoles
             Arguments:
             coordinates -- the coordinates of the multipoles in Bohr.
             multipoles -- the multipoles to use at the specified coordinates.
+            max_k -- maximum order of multipoles, allows to create Potential from charges, dipoles, and quadrupoles at once
 
             the multipoles can either be a list of charges, such as
             >> q = [[1.0], [-1.0], ...]
@@ -94,14 +95,11 @@ class Potential(object):
         if type(multipoles) == type([]) or type(multipoles).__module__ == numpy.__name__:
             for i, value in enumerate(multipoles):
 
-                if type(value) == type([]) or type(value).__module__ == numpy.__name__:
+                if max_k is None and (type(value) == type([]) or type(value).__module__ == numpy.__name__):
 
                     # numpy.float64 can enter this block and applying "len" to it is void.
                     if type(value) == numpy.float64:
                         m[0][i] = [float(value)]
-
-                    elif len(value) > 3:
-                        raise ValueError("Multipole moments larger than dipoles currently not supported.")
 
                     elif len(value) == 2:
                         raise ValueError("Multipole moments of length 2 is not understood")
@@ -109,9 +107,24 @@ class Potential(object):
                     elif len(value) == 1:
                         # add the monopole
                         m[0][i] = value
-                    else:
-                        # add a dipole
+                    elif len(value) == 3:
+                        # add the dipole
                         m[1][i] = value
+                    elif len(value) == 6:
+                        # add the quadrupole
+                        m[2][i] = value
+
+                elif max_k is not None and type(value) == type([]):
+                    for idx, mul in enumerate(value):
+                        if len(mul) == 1:
+                            # add the monopole
+                            m[0][idx] = mul
+                        elif len(mul) == 3:
+                            # add the dipole
+                            m[1][idx] = mul
+                        elif len(mul) == 6:
+                            # add the quadrupole
+                            m[2][idx] = mul
 
                 elif type(value) == type(0.0):
                     m[0][i] = [value]
@@ -137,8 +150,10 @@ class Potential(object):
         return a
 
     def getCoordinates(self):
-        """ Returns a nsites x 3 array with the coordinates of all
-            sites in the potential.
+        """ Returns a nsites x 3 array with the coordinates of all sites in the potential
+
+            Returns:
+            coordinates in atomic units
         """
         return self._coordinates
 
@@ -147,6 +162,8 @@ class Potential(object):
 
             NB: The coordinates does also include coordinates of non-atomic
                 sites such as polarizable sites.
+
+            Note: The coordinates must be given in atomic units
 
             Arguments:
             coordinates -- the coordinates of the potential
@@ -192,7 +209,7 @@ class Potential(object):
                   value of the maximum element is larger than zero.
         """
         if len(polarizabilities) != self.nsites:
-            raise ValueError("Number of polarizabilities must match number of sites.")
+            raise ValueError("Number of polarizabilities ({}) must match number of sites ({}).".format(len(polarizabilities), self.nsites))
 
         self._polarizabilities = polarizabilities
         self._hasalpha = numpy.array([-1 for p in polarizabilities])
@@ -209,8 +226,6 @@ class Potential(object):
         return self._exclusion_list
 
     def setExclusionList(self, exclusion_list):
-        #if self._debug:
-        #    #print("DEBUG: ['{}'] Setting exclusion list with the following dimension: {} x {}".format(self._filename, len(exclusion_list.keys()), len(exclusion_list[0])))
         self._exclusion_list = exclusion_list
 
     exclusion_list = property(getExclusionList, setExclusionList, doc='Gets or sets the exclusion list of the potential.')
@@ -264,9 +279,8 @@ class Potential(object):
             Arguments:
             filename -- The filename to save to.
         """
-        f = open(filename, 'w')
-        f.write(str(self))
-        f.close()
+        with open(filename, 'w') as f:
+            f.write(str(self))
 
     def __str__(self):
         """ Converts the potential to a string readable format
@@ -348,82 +362,86 @@ class Potential(object):
 
         # the situation is slightly more complicated since we can potentially add m2p2 with
         # and m0 potential.
-        m = dict()
-        try:
-            l_max_self = max(self.multipoles.keys())
-        except ValueError:
-            l_max_self = -1
-        try:
-            l_max_other = max(other.multipoles.keys())
-        except ValueError:
-            l_max_other = -1
-        l_max = max(l_max_self, l_max_other)
+        if hasattr(self, '_multipoles'):
+            m = dict()
+            try:
+                l_max_self = max(self.multipoles.keys())
+            except ValueError:
+                l_max_self = -1
 
-        # create entries for all multipoles in self and zero-entries for others
-        if l_max >= 0:
-            for key in range(l_max+1):
-                m[key] = list()
-                if key in self.multipoles:
-                    m[key].extend(self.multipoles[key][:])
-                else:
-                    if key == 0:
-                        m[key].extend([0.0] for c in self.coordinates)
-                    if key == 1:
-                        m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
-                    if key == 2:
-                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
+            try:
+                l_max_other = max(other.multipoles.keys())
+            except ValueError:
+                l_max_other = -1
 
-                if key in other.multipoles:
-                    m[key].extend(other.multipoles[key][:])
-                else:
-                    if key == 0:
-                        m[key].extend([0.0] for c in other.coordinates)
-                    if key == 1:
-                        m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
-                    if key == 2:
-                        m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
-        else:
-            m = {}
+            l_max = max(l_max_self, l_max_other)
 
-        p.multipoles = m
+            # create entries for all multipoles in self and zero-entries for others
+            if l_max >= 0:
+                for key in range(l_max+1):
+                    m[key] = list()
+                    if key in self.multipoles:
+                        m[key].extend(self.multipoles[key][:])
+                    else:
+                        if key == 0:
+                            m[key].extend([0.0] for c in self.coordinates)
+                        if key == 1:
+                            m[key].extend([0.0, 0.0, 0.0] for c in self.coordinates)
+                        if key == 2:
+                            m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in self.coordinates])
 
-        pol1 = self.polarizabilities[:]
-        pol2 = other.polarizabilities[:]
-        pol1.extend(pol2)
-        p.polarizabilities = pol1[:]
+                    if key in other.multipoles:
+                        m[key].extend(other.multipoles[key][:])
+                    else:
+                        if key == 0:
+                            m[key].extend([0.0] for c in other.coordinates)
+                        if key == 1:
+                            m[key].extend([0.0, 0.0, 0.0] for c in other.coordinates)
+                        if key == 2:
+                            m[key].extend([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for c in other.coordinates])
+            else:
+                m = {}
+            p.multipoles = m
 
-        # exclusionlists have to be updated so that the id's in the
-        # list reflect correct atoms. Offset items in the "other" by
-        # the number of polarizable sites. Items with a "-1" should
-        # not be updated
-        n1 = self.nsites
-        n2 = other.nsites
-        e1 = self.exclusion_list.copy()
-        e2 = other.exclusion_list.copy()
-
-        # find out which one has the more items per key
-        ne1 = len(e1[0])
-        ne2 = len(e2[0])
-
-        # if e2 has the more items, update elements in e1
-        # with the proper length
-        if (ne2 > ne1):
-            for k in e1.keys():
+        if hasattr(self, '_polarizabilities'):
+            # polarizabilities 
+            pol1 = self.polarizabilities[:]
+            pol2 = other.polarizabilities[:]
+            pol1.extend(pol2)
+            p.polarizabilities = pol1[:]
+    
+            # exclusionlists have to be updated so that the id's in the
+            # list reflect correct atoms. Offset items in the "other" by
+            # the number of polarizable sites. Items with a "-1" should
+            # not be updated
+            n1 = self.nsites
+            n2 = other.nsites
+            e1 = self.exclusion_list.copy()
+            e2 = other.exclusion_list.copy()
+    
+            # find out which one has the more items per key
+            ne1 = len(e1[0])
+            ne2 = len(e2[0])
+    
+            # if e2 has the more items, update elements in e1
+            # with the proper length
+            if (ne2 > ne1):
+                for k in e1.keys():
+                    items = -1 * numpy.ones(ne2, dtype=int)
+                    items[:ne1] = e1[k]
+                    e1[k] = items
+    
+            # append e2 to e1
+            for k in e2.keys():
                 items = -1 * numpy.ones(ne2, dtype=int)
-                items[:ne1] = e1[k]
-                e1[k] = items
-
-        # append e2 to e1
-        for k in e2.keys():
-            items = -1 * numpy.ones(ne2, dtype=int)
-            if (ne1 > ne2):
-                items = -1 * numpy.ones(ne1, dtype=int)
-            items[:ne2] = e2[k]
-            selection = numpy.where(items != -1)
-            items[selection] += n1
-            e1[k + n1] = items
-
-        p.exclusion_list = e1
+                if (ne1 > ne2):
+                    items = -1 * numpy.ones(ne1, dtype=int)
+                items[:ne2] = e2[k]
+                selection = numpy.where(items != -1)
+                items[selection] += n1
+                e1[k + n1] = items
+    
+            p.exclusion_list = e1
         return p
 
     def __and__(self, other):
@@ -450,7 +468,7 @@ class Potential(object):
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
 
-        from pepytools.fintersect import intersect
+        from pepytools.intersect import intersect
         nmax = max(len(sc), len(oc))
         F,n = intersect(nmax, sc, oc)
         satoms = list(F[:n,0])
@@ -532,7 +550,7 @@ class Potential(object):
                 #
                 smult = numpy.array(self.multipoles[key][ic])
                 omult = numpy.array(other.multipoles[key][oc])
-                #if self.multipoles[key][ic] != 
+                #if self.multipoles[key][ic] !=
                 diff = smult - omult
                 if numpy.max(numpy.abs(diff)) > 1.0e-8:
                     print("WARNING: Multipole moments are not the same.")
@@ -615,7 +633,7 @@ class Potential(object):
 
 
         # now we compare atom coordinates followed by potential properties
-        from pepytools.fintersect import intersect
+        from pepytools.intersect import intersect
         sc = numpy.array(self.coordinates)
         oc = numpy.array(other.coordinates)
         nmax = max(len(sc), len(oc))
@@ -634,7 +652,7 @@ class Potential(object):
         sm = self.multipoles
         om = other.multipoles
         for key in sm.keys():
-            if not om.has_key(key):
+            if not key in om:
                 return False
 
         # multipole moments

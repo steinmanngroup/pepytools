@@ -2,27 +2,25 @@ import sys
 #from distutils.core import setup
 from numpy.distutils.core import Extension, setup
 
-from src import __version__, __license__, __author__, __copyright__, __email__, __description__, __url__
+from pepytools import __version__, __license__, __author__, __copyright__, __email__, __description__, __url__
 
 FORTRAN = "f90"
 
 # setup fortran extensions
-ext_field = Extension(name = 'ffields',
-                      sources = ['src/ffields.f90'],
-                      language = FORTRAN,
+ext_field = Extension(name = 'ffield',
+                      sources = ['pepytools/ffield.f90'],
+                      language = 'fortran',
                       extra_f90_compile_args = ['-fopenmp'],
                       extra_link_args = ['-lgomp'],
                       f2py_options=['--quiet'])
 
-ext_intersect = Extension(name = 'fintersect',
-                          sources = ['src/fintersect.f90'],
-                          language = FORTRAN,
-                          f2py_options=['--quiet'])
+ext_intersect = Extension(name = 'intersect',
+                          sources = ['pepytools/intersect.f90'],
+                          language = 'fortran')
 
 ext_qmfields = Extension(name = 'qm_fields',
-                         sources = ['src/qm_fields.f90'],
-                         language = FORTRAN,
-                         f2py_options=['--quiet'])
+                         sources = ['pepytools/qm_fields.f90'],
+                         language = 'fortran')
 
 # use README.md as long description
 def readme():
@@ -46,7 +44,7 @@ def setup_pepytools():
           url = __url__,
 
           # set up package contents
-          package_dir={'pepytools': 'src'},
+          package_dir={'pepytools': 'pepytools'},
           packages=['pepytools'],
           scripts=['bin/pepy_add', 'bin/pepy_to_csv'],
           ext_package = 'pepytools',

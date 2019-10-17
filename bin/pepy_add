@@ -3,8 +3,8 @@ import sys
 
 from pepytools import Potential
 
-if len(sys.argv) < 1:
-    print "Usage: pepy_add potential1 [potential2 ...]"
+if len(sys.argv) <= 1:
+    print("Usage: pepy_add potential1 [potential2 ...]")
     exit()
 
 p = Potential.from_file(sys.argv[1])
@@ -13,4 +13,4 @@ for _f in sys.argv[2:]:
     _p = Potential.from_file(_f)
     p = p + _p
 
-print p
+print(p)
