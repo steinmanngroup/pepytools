@@ -22,7 +22,10 @@ from .solvers import IterativeDIISSolver
 
 from .potential import Potential
 
-from . version import __version__
+from .version import __version__
+
+from .tensor import T
+from .mulmom import MulMom
 
 __all__ = ['Potential', 'solvers', 'IterativeDIISSolver']
 __author__ = "Casper Steinmann"

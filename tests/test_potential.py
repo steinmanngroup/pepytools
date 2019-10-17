@@ -1,22 +1,26 @@
 import os
 from pepytools import Potential
 
+
 def test_m0_from_file():
     p = Potential.from_file('tests/m0.pot')
     assert p.nsites == 9  # 3 water molecules
     assert p.npols == 0
     print(p)
 
+
 def test_m2p2_from_file():
     p = Potential.from_file('tests/m2p2.pot')
     assert p.nsites == 6
     assert p.npols == 6
+
 
 def test_equality():
     p1 = Potential.from_file('tests/m0.pot')
     p2 = Potential.from_file('tests/m0.pot')
     print(p1, p2)
     assert p1 == p2
+
 
 def test_from_multipoles_quad():
     c1 = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
@@ -29,6 +33,7 @@ def test_from_multipoles_quad():
 
     p2 = Potential.from_file("tests/quad_test.pot")
     assert p1 == p2
+
 
 def test_from_multipoles():
     c1 = [[0.0, 0.0, 0.0]]
@@ -46,6 +51,7 @@ def test_from_multipoles():
     assert p2.multipoles[0] == [[0.0]]
     assert p2.multipoles[1] == [[1.0, 1.0, 0.0]]
     assert p2.npols == 0
+
 
 def test_addition():
     """ Tests various kinds of potential addition """

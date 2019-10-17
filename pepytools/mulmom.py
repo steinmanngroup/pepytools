@@ -32,7 +32,7 @@ class MulMom(list):
         if not len(values) in moment_orders:
             raise ValueError("Input data not understood.")
         self.order = moment_orders[len(values)]
-        self.verbose = True
+        self.verbose = False
 
         tensor_sizes = {0: 1, 1: 3, 2: 6}
         list.__init__(self, [0.0]*tensor_sizes[self.order])
@@ -64,6 +64,10 @@ class MulMom(list):
 
         if self.order == 1: # and other.order == 0:
             result = sum([self[i] * other[i] for i in range(3)])
+            return MulMom(result)
+
+        if self.order == 2 and other.order == 2:
+            result = sum([self[i] * other[i] for i in [0, 1, 2, 3, 4, 5, 1, 2, 4]])
             return MulMom(result)
 
 
@@ -109,9 +113,3 @@ class MulMom(list):
         self[0] = xxp
         self[3] = yyp
         self[5] = zzp
-
-if __name__ == '__main__':
-    #unittest.main()
-    dd = MulMom(1.0, 1.0, -2.0)
-    print(dd)
-    print(dd * dd)

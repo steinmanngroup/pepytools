@@ -1,5 +1,4 @@
 import math
-import pytest
 import numpy
 
 from .mulmom import MulMom
@@ -121,7 +120,6 @@ class T(list):
             print("T.mul:", repr(self), "*", repr(other))
         if isinstance(other, MulMom):
 
-            #print "  orders:", self.order, other.order
             # potential of charge
             if self.order == 0 and other.order == 0:
                 return MulMom(self[0] * other[0])
@@ -156,9 +154,28 @@ class T(list):
             # electric field of dipole
             if self.order == 2 and other.order == 1:
                 result = [0.0, 0.0, 0.0]
-                result[0] = self[0] * other[0] + self[1] * other[1] + self[2] * other[2] # xx * x + xy * y + xz * z
-                result[1] = self[1] * other[0] + self[3] * other[1] + self[4] * other[2] # yx * x + yy * y + yz * z
-                result[2] = self[2] * other[0] + self[4] * other[1] + self[5] * other[2] # zx * x + zy * y + zz * z
+                mux = other[0]
+                muy = other[1]
+                muz = other[2]
+                #print("oo", list(other))
+                #print("mu", mux, muy, muz)
+                result[0] = self[0] * mux + self[1] * muy + self[2] * muz # xx * x + xy * y + xz * z
+                result[1] = self[1] * mux + self[3] * muy + self[4] * muz # yx * x + yy * y + yz * z
+                result[2] = self[2] * mux + self[4] * muy + self[5] * muz # zx * x + zy * y + zz * z
+                return MulMom(*result)
+
+            # electric field gradient of dipole
+            if self.order == 3 and other.order == 1:
+                result = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                mux = other[0]
+                muy = other[1]
+                muz = other[2]
+                result[0] = self[0] * mux + self[1] * muy + self[2] * muz
+                result[1] = self[1] * mux + self[3] * muy + self[4] * muz
+                result[2] = self[2] * mux + self[4] * muy + self[5] * muz
+                result[3] = self[3] * mux + self[6] * muy + self[7] * muz
+                result[4] = self[4] * mux + self[7] * muy + self[8] * muz
+                result[5] = self[5] * mux + self[8] * muy + self[9] * muz
                 return MulMom(*result)
 
             # T(0, R) * quadrupole is undefined
@@ -180,123 +197,34 @@ class T(list):
             # electric field of quadrupole
             if self.order == 3 and other.order == 2:
                 result = [0.0, 0.0, 0.0]
-                result[0] = (self[0] * other[0] + self[1] * other[1] + self[2] * other[2]
-                          +  self[1] * other[1] + self[3] * other[3] + self[4] * other[4]
-                          +  self[2] * other[2] + self[4] * other[4] + self[0] * other[5])
-                result[1] = (self[1] * other[0] + self[3] * other[1] + self[4] * other[2]
-                          +  self[3] * other[1] + self[6] * other[3] + self[7] * other[4]
-                          +  self[4] * other[2] + self[7] * other[4] + self[8] * other[5])
-                result[2] = (self[2] * other[0] + self[4] * other[1] + self[5] * other[2]
-                          +  self[4] * other[1] + self[7] * other[3] + self[8] * other[4]
-                          +  self[5] * other[2] + self[8] * other[4] + self[9] * other[5])
+                Oxx = other[0]
+                Oxy = other[1]
+                Oxz = other[2]
+                Oyy = other[3]
+                Oyz = other[4]
+                Ozz = other[5]
+                result[0] = self[0] * Oxx + self[1] * Oxy + self[2] * Oxz + self[ 3] * Oyy + self[ 4] * Oyz + self[ 5] * Ozz
+                result[1] = self[1] * Oxx + self[3] * Oxy + self[4] * Oxz + self[ 6] * Oyy + self[ 7] * Oyz + self[ 8] * Ozz
+                result[2] = self[2] * Oxx + self[4] * Oxy + self[5] * Oxz + self[ 7] * Oyy + self[ 8] * Oyz + self[ 9] * Ozz
+                return MulMom(*result)
+
+            # electric field gradient of quadrupole
+            if self.order == 4 and other.order == 2:
+                result = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                Oxx = other[0]
+                Oxy = other[1]
+                Oxz = other[2]
+                Oyy = other[3]
+                Oyz = other[4]
+                Ozz = other[5]
+                result[0] = self[0] * Oxx + self[1] * Oxy + self[2] * Oxz + self[ 3] * Oyy + self[ 4] * Oyz + self[ 5] * Ozz
+                result[1] = self[1] * Oxx + self[3] * Oxy + self[4] * Oxz + self[ 6] * Oyy + self[ 7] * Oyz + self[ 8] * Ozz
+                result[2] = self[2] * Oxx + self[4] * Oxy + self[5] * Oxz + self[ 7] * Oyy + self[ 8] * Oyz + self[ 9] * Ozz
+                result[3] = self[3] * Oxx + self[6] * Oxy + self[7] * Oxz + self[10] * Oyy + self[11] * Oyz + self[12] * Ozz
+                result[4] = self[4] * Oxx + self[7] * Oxy + self[8] * Oxz + self[11] * Oyy + self[12] * Oyz + self[13] * Ozz
+                result[5] = self[5] * Oxx + self[8] * Oxy + self[9] * Oxz + self[12] * Oyy + self[13] * Oyz + self[14] * Ozz
                 return MulMom(*result)
 
             raise NotImplementedError("Your request of T({}, R) * multipole order {} is not implemented.".format(self.order, other.order))
-
-    #        # T(1, R) * dipole is the potential of a dipole
-    #        #if self.order == 1 and other.order == 1:
-    #        #    return other * self
-    #        if self.order == 1 and other.order == 1:
-    #            value = 0.0
-    #            for i, (v1, v2) in enumerate(zip(self, other)):
-    #                value += v1 * v2
-    #            return MulMom(value)
-    #        raise TypeError("LOL")
         else:
-            return TypeError
-
-    #def __rmul__(self, other):
-    #    #print "T.rmul:", type(self), type(other), " repr(other)", repr(other)
-    #    if isinstance(other, MulMom):
-    #        return self*other
-
-    #    if isinstance(other, float):
-    #        for i in range(len(self)):
-    #            self[i] *= other
-    #        return self
-
-    #    raise TypeError("multiplication of T-tensor with {0:s} not implemented.".format(type(other)))
-
-
-@pytest.fixture
-def setup_vectors():
-    import random
-
-    R = [0.0, 0.0, 2.0]
-    randR = [(random.random()-1) for i in range(3)]
-    r = math.sqrt(R[0]*R[0] + R[1]*R[1] + R[2]*R[2])
-    return R, randR, r
-
-
-def test_order0():
-    """ tests correct scaling of order 0 """
-    R, _, r = setup_vectors()
-    tensor = T(0, R)
-    assert 1.0/r == pytest.approx(tensor[0])
-
-
-def test_order1():
-    """ tests correct scaling of order 1 """
-    R, _, r = setup_vectors()
-    tensor = T(1, R)
-    assert -1.0/r**2 == pytest.approx(tensor[2])
-
-
-def test_order2():
-    """ tests tracelessness of order 2 interaction tensor
-
-        The condition that an interaction tensor is traceless
-        i.e sum_alpha T_{alpha,alpha} = 0 should be True
-        for all input vectors.
-    """
-    _, randR, _ = setup_vectors()
-    tensor = T(2, randR)
-    assert 0.0 == pytest.approx(tensor[0] + tensor[3] + tensor[5])
-
-
-def test_order3():
-    """ tests tracelessness of order 3 interaction tensor
-
-        The condition that an interaction tensor is traceless
-        i.e sum_alpha T_{alpha,alpha,...} = 0 should be True
-        for all input vectors.
-    """
-    _, randR, _ = setup_vectors()
-    tensor = T(3, randR)
-    # tracelessness of interaction tensor is defined on
-    # pp 45 in Stones' Theory of Intermolecular Forces (2nd ed)
-    trace_indices = [0, 1, 2, 3, 5, 6, 7, 8, 9]
-    assert 0.0 == pytest.approx( sum( [tensor[i] for i in trace_indices] ) )
-
-
-def test_order4():
-    """ tests tracelessness of order 3 interaction tensor
-
-        The condition that an interaction tensor is traceless
-        i.e sum_alpha T_{alpha,alpha,...} = 0 should be True
-        for all input vectors.
-    """
-    _, randR, _ = setup_vectors()
-    tensor = T(4, randR)
-    # tracelessness of interaction tensor is defined on
-    # pp 45 in Stones' Theory of Intermolecular Forces (2nd ed)
-    trace_indices = list(range(15))  + [3, 5, 12]
-    for i in trace_indices:
-        print(i, tensor[i])
-    assert 0.0 == pytest.approx( sum( [tensor[i] for i in trace_indices] ) )
-
-
-if __name__ == '__main__':
-    #unittest.main()
-
-    #R = [-2, 0.2, 5.0]
-    R = [0, 0,  -5.0]
-    print("T0:", list(T(0, R)))
-    print("T1:", list(T(1, R)))
-    print("T2:", list(T(2, R)))
-    dd = MulMom(1.0)
-    T1 = T(0, R)
-    print(T1 * dd)
-    #print tt._np
-    #q = MulMom(1.0)
-    #print T(1, R) * dd
+            return TypeError("Expected {}".format(type(other)))
