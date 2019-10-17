@@ -21,9 +21,9 @@ to install it in the default locations. To install it in a custom location, you 
 Remember to add the installation paths to your environment variables:
 
     export PATH=/path/to/custom/installation/bin:$PATH
-    export PYTHONPATH=/path/to/custom/installation/lib/python2.7/site-packages:$PYTHONPATH
+    export PYTHONPATH=/path/to/custom/installation/lib/python3.7/site-packages:$PYTHONPATH
 
-shown here for a python 2.7 installation example.
+shown here for a python 3.7 installation example.
 
 ## Example
 The most typical action to use pepytools is to add individual potentials.
