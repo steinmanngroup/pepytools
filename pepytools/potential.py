@@ -1,6 +1,6 @@
 import numpy
 
-from pepytools.reader import read_potential
+from pepytools.reader import read_potential_from_file
 from pepytools.constants import BOHRTOAA
 
 

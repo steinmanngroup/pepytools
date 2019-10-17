@@ -29,7 +29,7 @@ from .mulmom import MulMom
 
 __all__ = ['Potential', 'solvers', 'IterativeDIISSolver']
 __author__ = "Casper Steinmann"
-__copyright__ = "Copyright 2015, Casper Steinmann"
+__copyright__ = "Copyright 2015-2019, Casper Steinmann"
 __license__ = "BSD 2-clause"
 __email__ = "casper.steinmann@gmail.com"
 __status__ = "Development"
