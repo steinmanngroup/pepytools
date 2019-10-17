@@ -4,7 +4,7 @@ import numpy
 from numpy.linalg import norm
 
 import util
-from potential import Potential
+from pepytools.potential import Potential
 
 
 class TestUtil(unittest.TestCase):
