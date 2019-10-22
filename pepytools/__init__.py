@@ -17,10 +17,10 @@ Classes:
   - IterativeDIISSolver: DIIS solver for induced moments
 
 """
-from . import solvers
 from .solvers import IterativeDIISSolver
 
 from .potential import Potential
+from .intersect import intersect
 
 from .version import __version__
 

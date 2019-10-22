@@ -1,4 +1,4 @@
-subroutine intersect(ids, nids, idsadd, nc1, c1, nc2, c2)
+subroutine fintersect(ids, nids, idsadd, nc1, c1, nc2, c2)
     implicit none
     integer ids
     integer nids
