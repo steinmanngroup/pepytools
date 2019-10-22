@@ -1,7 +1,9 @@
 import pytest
+import numpy
 
 def intersect(sc, oc):
-    """
+    """ Computes the intersection between two potential coordinates
+
         :param numpy.ndarray sc: coordinates of self
         :param numpy.ndarray oc: coordinates of other
     """
